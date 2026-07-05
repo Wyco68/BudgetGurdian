@@ -1,0 +1,12 @@
+target/
+*.class
+*.db
+*.db-journal
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+dependency-reduced-pom.xml
+hs_err_pid*
