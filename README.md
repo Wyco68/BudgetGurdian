@@ -30,10 +30,10 @@ in-memory structures; SQLite is persistence only.
 |---|---|
 | `DynamicArray<T>` | Dashboard aggregates, chart data, reports |
 | `DoublyLinkedList<T>` | Transactions, debt and transfer history |
-| `MyHashMap<K,V>` | Accounts, category totals, refill items, debts, settings |
-| `MyStack<T>` | Undo (action history) |
-| `MyQueue<T>` | Notification and reminder queues |
-| `MyPriorityQueue<T>` | Hero alert banner (highest-priority notification) |
+| `HashMap<K,V>` | Accounts, category totals, refill items, debts, settings |
+| `Stack<T>` | Undo (action history) |
+| `Queue<T>` | Notification and reminder queues |
+| `PriorityQueue<T>` | Hero alert banner (highest-priority notification) |
 | `CircularBuffer<T>` | Recent 20 transactions widget |
 | `Graph` | Account transfer network with DFS/BFS visualization |
 
