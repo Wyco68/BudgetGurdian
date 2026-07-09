@@ -64,6 +64,31 @@ public final class TransactionRepository {
         }
     }
 
+    /**
+     * Re-inserts a previously deleted transaction with its original id
+     * (undo of a delete). SQLite accepts explicit ids on AUTOINCREMENT keys.
+     */
+    public void restore(Transaction txn) throws SQLException {
+        String sql = "INSERT INTO txn (id, type, account_id, category_id, item_name, amount_satang, reason, "
+                + "txn_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, txn.id());
+            stmt.setString(2, txn.type().name());
+            stmt.setString(3, txn.accountId());
+            if (txn.categoryId() != null) {
+                stmt.setInt(4, txn.categoryId());
+            } else {
+                stmt.setNull(4, Types.INTEGER);
+            }
+            stmt.setString(5, txn.itemName());
+            stmt.setLong(6, txn.amountSatang());
+            stmt.setString(7, txn.reason());
+            stmt.setString(8, txn.date().toString());
+            stmt.setString(9, txn.createdAt().toString());
+            stmt.executeUpdate();
+        }
+    }
+
     /** Rewrites all columns of an existing transaction (edit feature). */
     public void update(Transaction txn) throws SQLException {
         String sql = "UPDATE txn SET type = ?, account_id = ?, category_id = ?, item_name = ?, "
