@@ -158,3 +158,79 @@
 .edge-to-edge > .viewport { -fx-background-color: transparent; }
 
 .scroll-pane { -fx-background-color: transparent; }
+
+/* ---- buttons + tables --------------------------------------------------- */
+
+.primary-button {
+    -fx-background-color: -accent-dim;
+    -fx-text-fill: #06231f;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover { -fx-background-color: -accent; }
+
+.danger-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -neg;
+    -fx-border-color: -neg;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 7 15 7 15;
+    -fx-cursor: hand;
+}
+
+.danger-button:hover { -fx-background-color: rgba(248, 113, 113, 0.12); }
+
+.button {
+    -fx-background-color: -bg-3;
+    -fx-text-fill: -text;
+    -fx-background-radius: 8;
+    -fx-padding: 8 14 8 14;
+    -fx-cursor: hand;
+}
+
+.button:hover { -fx-background-color: #303a46; }
+
+.data-table {
+    -fx-background-color: -bg-1;
+    -fx-background-radius: 10;
+    -fx-border-color: #262e38;
+    -fx-border-radius: 10;
+    -fx-table-cell-border-color: transparent;
+}
+
+.data-table .column-header-background {
+    -fx-background-color: -bg-1;
+    -fx-background-radius: 10 10 0 0;
+}
+
+.data-table .column-header .label {
+    -fx-text-fill: -text-muted;
+    -fx-font-weight: bold;
+}
+
+.data-table .table-row-cell {
+    -fx-background-color: -bg-1;
+    -fx-border-color: transparent transparent #23282f transparent;
+}
+
+.data-table .table-row-cell:odd { -fx-background-color: #191e25; }
+.data-table .table-row-cell:selected { -fx-background-color: -bg-3; }
+.data-table .table-cell { -fx-text-fill: -text; -fx-padding: 8 10 8 10; }
+
+/* dialogs share the dark surface */
+.dialog-pane {
+    -fx-background-color: -bg-1;
+}
+
+.dialog-pane .label { -fx-text-fill: -text; }
+.dialog-pane .content.label { -fx-text-fill: -text; }
+.dialog-pane .combo-box, .dialog-pane .text-field, .dialog-pane .date-picker {
+    -fx-background-color: -bg-2;
+    -fx-text-fill: -text;
+}
+.dialog-pane .combo-box .list-cell { -fx-text-fill: -text; -fx-background-color: -bg-2; }
+.dialog-pane .text-field { -fx-prompt-text-fill: -text-muted; }

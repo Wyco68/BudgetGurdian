@@ -5,9 +5,14 @@ import com.budgetguardian.service.ReminderScheduler;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
 import com.budgetguardian.view.DashboardView;
+import com.budgetguardian.view.TransactionsView;
+import com.budgetguardian.view.TransfersView;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.stage.Stage;
 
 import java.nio.file.Path;
@@ -42,14 +47,28 @@ public final class Main extends Application {
 
         AppShell shell = new AppShell(services);
         shell.register(new DashboardView(services, LocalDate::now));
+        TransactionsView transactionsView = new TransactionsView(services, LocalDate::now);
+        shell.register(transactionsView);
+        shell.register(new TransfersView(services, LocalDate::now));
 
         Scene scene = new Scene(shell.getNode(), 1180, 760);
         scene.getStylesheets().add(styleSheet());
+        registerShortcuts(scene, services, transactionsView);
         stage.setScene(scene);
         stage.setTitle("Budget Guardian");
         stage.show();
 
         startReminderScheduler(services);
+    }
+
+    /** Global accelerators: Ctrl+N new transaction, Ctrl+Z undo. */
+    private void registerShortcuts(Scene scene, ServiceContext services, TransactionsView transactionsView) {
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN),
+                transactionsView::openAddDialog);
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+                () -> services.undo().undo());
     }
 
     private void startReminderScheduler(ServiceContext services) {
