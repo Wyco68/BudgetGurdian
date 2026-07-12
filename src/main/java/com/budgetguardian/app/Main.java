@@ -5,6 +5,9 @@ import com.budgetguardian.service.ReminderScheduler;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
 import com.budgetguardian.view.DashboardView;
+import com.budgetguardian.view.DebtView;
+import com.budgetguardian.view.RefillsView;
+import com.budgetguardian.view.SettingsView;
 import com.budgetguardian.view.TransactionsView;
 import com.budgetguardian.view.TransfersView;
 import javafx.application.Application;
@@ -50,6 +53,9 @@ public final class Main extends Application {
         TransactionsView transactionsView = new TransactionsView(services, LocalDate::now);
         shell.register(transactionsView);
         shell.register(new TransfersView(services, LocalDate::now));
+        shell.register(new DebtView(services, LocalDate::now));
+        shell.register(new RefillsView(services, LocalDate::now));
+        shell.register(new SettingsView(services));
 
         Scene scene = new Scene(shell.getNode(), 1180, 760);
         scene.getStylesheets().add(styleSheet());
