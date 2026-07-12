@@ -4,8 +4,10 @@ import com.budgetguardian.database.DatabaseManager;
 import com.budgetguardian.service.ReminderScheduler;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
+import com.budgetguardian.view.CalendarView;
 import com.budgetguardian.view.DashboardView;
 import com.budgetguardian.view.DebtView;
+import com.budgetguardian.view.GraphView;
 import com.budgetguardian.view.RefillsView;
 import com.budgetguardian.view.SettingsView;
 import com.budgetguardian.view.TransactionsView;
@@ -50,11 +52,13 @@ public final class Main extends Application {
 
         AppShell shell = new AppShell(services);
         shell.register(new DashboardView(services, LocalDate::now));
+        shell.register(new CalendarView(services, LocalDate::now));
         TransactionsView transactionsView = new TransactionsView(services, LocalDate::now);
         shell.register(transactionsView);
         shell.register(new TransfersView(services, LocalDate::now));
         shell.register(new DebtView(services, LocalDate::now));
         shell.register(new RefillsView(services, LocalDate::now));
+        shell.register(new GraphView(services, LocalDate::now));
         shell.register(new SettingsView(services));
 
         Scene scene = new Scene(shell.getNode(), 1180, 760);

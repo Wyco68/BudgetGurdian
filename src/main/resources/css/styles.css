@@ -234,3 +234,18 @@
 }
 .dialog-pane .combo-box .list-cell { -fx-text-fill: -text; -fx-background-color: -bg-2; }
 .dialog-pane .text-field { -fx-prompt-text-fill: -text-muted; }
+
+/* ---- calendar ----------------------------------------------------------- */
+
+.cal-cell {
+    -fx-background-color: -bg-2;
+    -fx-background-radius: 8;
+    -fx-border-color: #262e38;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.cal-cell Label { -fx-text-fill: -text; }
+.cal-under { -fx-border-color: -accent-dim; }
+.cal-over { -fx-background-color: #3a1d1d; -fx-border-color: -neg; }
+.cal-today { -fx-border-color: -accent; -fx-border-width: 2; }
