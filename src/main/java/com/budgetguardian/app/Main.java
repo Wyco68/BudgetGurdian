@@ -10,6 +10,7 @@ import com.budgetguardian.view.DebtView;
 import com.budgetguardian.view.GraphView;
 import com.budgetguardian.view.RefillsView;
 import com.budgetguardian.view.ReportsView;
+import com.budgetguardian.view.SearchView;
 import com.budgetguardian.view.SettingsView;
 import com.budgetguardian.view.TransactionsView;
 import com.budgetguardian.view.TransfersView;
@@ -60,12 +61,14 @@ public final class Main extends Application {
         shell.register(new DebtView(services, LocalDate::now));
         shell.register(new RefillsView(services, LocalDate::now));
         shell.register(new ReportsView(services, LocalDate::now));
+        SearchView searchView = new SearchView(services);
+        shell.register(searchView);
         shell.register(new GraphView(services, LocalDate::now));
         shell.register(new SettingsView(services));
 
         Scene scene = new Scene(shell.getNode(), 1180, 760);
         scene.getStylesheets().add(styleSheet());
-        registerShortcuts(scene, services, transactionsView);
+        registerShortcuts(scene, services, shell, transactionsView, searchView);
         stage.setScene(scene);
         stage.setTitle("Budget Guardian");
         stage.show();
@@ -73,14 +76,21 @@ public final class Main extends Application {
         startReminderScheduler(services);
     }
 
-    /** Global accelerators: Ctrl+N new transaction, Ctrl+Z undo. */
-    private void registerShortcuts(Scene scene, ServiceContext services, TransactionsView transactionsView) {
+    /** Global accelerators: Ctrl+N new transaction, Ctrl+Z undo, Ctrl+F search. */
+    private void registerShortcuts(Scene scene, ServiceContext services, AppShell shell,
+                                   TransactionsView transactionsView, SearchView searchView) {
         scene.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN),
                 transactionsView::openAddDialog);
         scene.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
                 () -> services.undo().undo());
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN),
+                () -> {
+                    shell.show(searchView);
+                    searchView.focusQuery();
+                });
     }
 
     private void startReminderScheduler(ServiceContext services) {

@@ -1,5 +1,6 @@
 package com.budgetguardian.service;
 
+import com.budgetguardian.datastructures.CircularBuffer;
 import com.budgetguardian.datastructures.Comparator;
 import com.budgetguardian.datastructures.PriorityQueue;
 import com.budgetguardian.datastructures.Queue;
@@ -33,18 +34,28 @@ public final class NotificationService {
         return b.raisedAt().compareTo(a.raisedAt());   // older raisedAt outranks
     };
 
+    /** Capacity of the recent-alert history ring shown in the UI. */
+    private static final int HISTORY_CAPACITY = 20;
+
     private final EventBus bus;
     private final PriorityQueue<Notification> heroBanners = new PriorityQueue<>(HERO_ORDER);
     private final Queue<Notification> reminders = new Queue<>();
+    private final CircularBuffer<Notification> history = new CircularBuffer<>(HISTORY_CAPACITY);
 
     public NotificationService(EventBus bus) {
         this.bus = bus;
     }
 
-    /** Adds an alert to the banner and publishes {@code NOTIFICATION_RAISED}. O(log n). */
+    /** Adds an alert to the banner, records it in history, and publishes. O(log n). */
     public void raiseHero(Notification notification) {
         heroBanners.insert(notification);
+        history.add(notification);
         bus.publish(EventType.NOTIFICATION_RAISED);
+    }
+
+    /** @return recent raised alerts, newest first (bounded ring of {@value #HISTORY_CAPACITY}). */
+    public CircularBuffer<Notification> history() {
+        return history;
     }
 
     /** @return the highest-priority active alert, or null if none. O(1). */

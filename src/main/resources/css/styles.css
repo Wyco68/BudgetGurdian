@@ -278,3 +278,32 @@
 .axis { -fx-tick-label-fill: -text-muted; -fx-text-fill: -text-muted; }
 .axis-label { -fx-text-fill: -text-muted; }
 .default-color0.chart-bar { -fx-bar-fill: -accent; }
+
+/* ---- top bar + notification bell + popover ------------------------------ */
+
+.top-bar {
+    -fx-background-color: -bg-1;
+    -fx-border-color: transparent transparent #23282f transparent;
+    -fx-border-width: 1;
+}
+
+.bell-button {
+    -fx-background-color: -bg-2;
+    -fx-text-fill: -text;
+    -fx-background-radius: 8;
+    -fx-padding: 6 12 6 12;
+    -fx-cursor: hand;
+}
+
+.bell-button:hover { -fx-background-color: -bg-3; }
+
+.popover {
+    -fx-background-color: -bg-1;
+    -fx-background-radius: 12;
+    -fx-border-color: #2c343f;
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 18, 0.2, 0, 6);
+}
+
+.popover-content { -fx-background-color: transparent; }
+.list-title { -fx-text-fill: -text; -fx-font-weight: bold; -fx-font-size: 13px; }

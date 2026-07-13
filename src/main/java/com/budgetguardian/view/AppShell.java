@@ -7,6 +7,8 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
@@ -36,7 +38,17 @@ public final class AppShell {
         navRail.getChildren().add(brand);
 
         root.setLeft(navRail);
-        root.setTop(new HeroBanner(services).getNode());
+
+        // Top: a slim toolbar with the notification bell, above the hero banner.
+        Region toolbarSpacer = new Region();
+        HBox.setHgrow(toolbarSpacer, Priority.ALWAYS);
+        HBox toolbar = new HBox(8, toolbarSpacer, new NotificationBell(services).getNode());
+        toolbar.getStyleClass().add("top-bar");
+        toolbar.setPadding(new Insets(8, 16, 8, 16));
+        toolbar.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox top = new VBox(toolbar, new HeroBanner(services).getNode());
+        root.setTop(top);
     }
 
     /** Registers a view and adds its nav-rail button. First registered is shown. */
@@ -65,6 +77,16 @@ public final class AppShell {
             button.getStyleClass().remove("nav-button-active");
             if (i == index) {
                 button.getStyleClass().add("nav-button-active");
+            }
+        }
+    }
+
+    /** Shows a registered view by reference (no-op if not registered). */
+    public void show(View view) {
+        for (int i = 0; i < views.size(); i++) {
+            if (views.get(i) == view) {
+                show(i);
+                return;
             }
         }
     }
