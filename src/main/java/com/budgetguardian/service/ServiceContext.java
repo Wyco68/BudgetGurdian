@@ -37,6 +37,7 @@ public final class ServiceContext {
     private final RefillService refillService;
     private final SettingsService settingsService;
     private final SearchService searchService;
+    private final ReportService reportService;
     private final UndoService undoService;
     private final NotificationService notificationService;
     private final RuleEngine ruleEngine;
@@ -62,6 +63,7 @@ public final class ServiceContext {
         this.refillService = new RefillService(store, bus, runner, refillRepository);
         this.settingsService = new SettingsService(store, bus, settingsRepository);
         this.searchService = new SearchService(store);
+        this.reportService = new ReportService(store);
         this.undoService = new UndoService(store, transactionService, transferService, debtService, refillService);
         this.notificationService = new NotificationService(bus);
         this.ruleEngine = new RuleEngine(store, bus, notificationService, settingsService, refillService, today);
@@ -98,6 +100,10 @@ public final class ServiceContext {
 
     public SearchService search() {
         return searchService;
+    }
+
+    public ReportService reports() {
+        return reportService;
     }
 
     public UndoService undo() {
