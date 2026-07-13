@@ -9,6 +9,7 @@ import com.budgetguardian.view.DashboardView;
 import com.budgetguardian.view.DebtView;
 import com.budgetguardian.view.GraphView;
 import com.budgetguardian.view.RefillsView;
+import com.budgetguardian.view.ReportsView;
 import com.budgetguardian.view.SettingsView;
 import com.budgetguardian.view.TransactionsView;
 import com.budgetguardian.view.TransfersView;
@@ -58,6 +59,7 @@ public final class Main extends Application {
         shell.register(new TransfersView(services, LocalDate::now));
         shell.register(new DebtView(services, LocalDate::now));
         shell.register(new RefillsView(services, LocalDate::now));
+        shell.register(new ReportsView(services, LocalDate::now));
         shell.register(new GraphView(services, LocalDate::now));
         shell.register(new SettingsView(services));
 

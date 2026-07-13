@@ -249,3 +249,32 @@
 .cal-under { -fx-border-color: -accent-dim; }
 .cal-over { -fx-background-color: #3a1d1d; -fx-border-color: -neg; }
 .cal-today { -fx-border-color: -accent; -fx-border-width: 2; }
+
+/* ---- reports + charts --------------------------------------------------- */
+
+.period-toggle {
+    -fx-background-color: -bg-2;
+    -fx-text-fill: -text-muted;
+    -fx-background-radius: 8;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+
+.period-toggle:selected {
+    -fx-background-color: -accent-dim;
+    -fx-text-fill: #06231f;
+    -fx-font-weight: bold;
+}
+
+.chart {
+    -fx-background-color: -bg-2;
+    -fx-background-radius: 12;
+    -fx-padding: 12;
+}
+
+.chart-plot-background { -fx-background-color: transparent; }
+.chart-vertical-grid-lines { -fx-stroke: #262e38; }
+.chart-horizontal-grid-lines { -fx-stroke: #262e38; }
+.axis { -fx-tick-label-fill: -text-muted; -fx-text-fill: -text-muted; }
+.axis-label { -fx-text-fill: -text-muted; }
+.default-color0.chart-bar { -fx-bar-fill: -accent; }
