@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Budget Guardian",
+  "version": "1.0.0",
+  "description": "Personal finance desktop application built as a data structures and algorithms showcase. Every core feature is intentionally implemented on custom, from-scratch data structures rather than the Java Collections Framework.",
+  "type": "desktop-application",
+  "language": {
+    "name": "Java",
+    "version": "21"
+  },
+  "buildTool": {
+    "name": "Maven",
+    "groupId": "com.budgetguardian",
+    "artifactId": "budget-guardian"
+  },
+  "techStack": {
+    "gui": "JavaFX 21 (code-built views, no FXML)",
+    "persistence": "SQLite via JDBC (sqlite-jdbc)",
+    "testing": "JUnit 5",
+    "documentation": "Javadoc on all public types and methods",
+    "packaging": ["jpackage (native installer)", "Maven Shade (fat jar)"]
+  },
+  "coreConstraint": {
+    "rule": "No java.util Collections (ArrayList, LinkedList, HashMap, HashSet, PriorityQueue, Stack, Queue, etc.) may be used as storage or in business logic.",
+    "allowedExceptions": [
+      "JDBC ResultSet iteration inside repository classes (unavoidable interop)",
+      "JavaFX ObservableList at the UI rendering boundary only, populated by copying from a custom structure immediately before display, never used as a data store",
+      "java.util.NoSuchElementException / ConcurrentModificationException as thrown exception types (not storage)"
+    ],
+    "enforcement": "ArchitectureGuardTest scans src/main/java under datastructures, model, repository, service, and algorithm packages and fails the build if a forbidden java.util collection import is found."
+  },
+  "architecture": {
+    "layering": [
+      "SQLite (persistence only, never queried at runtime after startup)",
+      "Repository layer (JDBC, PreparedStatement only)",
+      "Custom Data Structures (owned by DataStore)",
+      "Service layer (business logic, validation, undo, rules, notifications, reports)",
+      "JavaFX UI (views + dialogs, subscribed to EventBus)"
+    ],
+    "dataFlowDirection": "SQLite -> Repository -> DataStore (custom structures) -> Service -> UI. UI never accesses SQLite directly.",
+    "writePathSteps": [
+      "Validate input in the service",
+      "Persist to SQLite inside one TransactionRunner transaction (DB-first ordering)",
+      "Mutate in-memory DataStore structures",
+      "Push the inverse Action onto the undo Stack",
+      "Re-run the RuleEngine (danger spending, daily budget, debt overdue, refill overdue)",
+      "Publish an EventType on the EventBus so subscribed views refresh"
+    ],
+    "compositionRoot": "com.budgetguardian.service.ServiceContext wires repositories, DataStore (via StartupLoader), every service, NotificationService, and RuleEngine into one object graph. com.budgetguardian.app.Main constructs it and builds the JavaFX shell on top."
+  },
+  "designPatterns": [
+    { "pattern": "Repository", "location": "com.budgetguardian.repository", "description": "One repository class per aggregate; JDBC-only, never returns java.util collections." },
+    { "pattern": "Service Layer", "location": "com.budgetguardian.service", "description": "All business rules, validation and orchestration." },
+    { "pattern": "MVC (adapted)", "location": "view/ (view+controller combined), model/, service/", "description": "view classes act as both controller and view; model holds immutable domain records." },
+    { "pattern": "Observer", "location": "com.budgetguardian.service.EventBus", "description": "Publish/subscribe; services publish EventType values, views subscribe. Zero direct coupling." },
+    { "pattern": "Command + Memento", "location": "com.budgetguardian.service.Action (sealed interface)", "description": "Every mutation is an undoable command carrying enough state (a memento snapshot) to invert itself." },
+    { "pattern": "Strategy", "location": "com.budgetguardian.algorithm.sorting.SortStrategy, com.budgetguardian.algorithm.searching.SearchStrategy", "description": "Sort/search algorithm is injected, not hardcoded." }
+  ],
+  "customDataStructures": [
+    {
+      "name": "DynamicArray<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "resizable Object[]",
+      "resizePolicy": "doubles capacity when full; halves when size drops to 1/4 capacity, never below default (8)",
+      "usedFor": ["report rows", "chart series data", "the heap array inside PriorityQueue"],
+      "complexity": {
+        "get": "O(1)", "set": "O(1)", "append": "amortized O(1)",
+        "insert": "O(n)", "remove": "O(n)", "indexOf": "O(n)"
+      }
+    },
+    {
+      "name": "DoublyLinkedList<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "doubly linked nodes with head/tail references",
+      "usedFor": ["transaction ledger (chronological)", "transfer history", "per-debt payment history", "Graph adjacency chains"],
+      "complexity": {
+        "addFirst": "O(1)", "addLast": "O(1)", "removeFirst": "O(1)", "removeLast": "O(1)",
+        "get": "O(n)", "insertAt": "O(n)", "remove(value)": "O(n)",
+        "iterator": "O(1) per step, forward", "descendingIterator": "O(1) per step, reverse"
+      }
+    },
+    {
+      "name": "HashMap<K,V>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "separate-chaining hash table, 16 initial buckets, 0.75 load factor, bit-spread hash (h ^ (h >>> 16))",
+      "usedFor": ["accounts", "categories", "debts", "refill items", "settings", "derived daily/monthly/weekly totals"],
+      "complexity": {
+        "put": "average O(1), worst O(n)", "get": "average O(1), worst O(n)",
+        "remove": "average O(1), worst O(n)", "rehash": "O(n)"
+      }
+    },
+    {
+      "name": "Stack<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "singly linked nodes",
+      "usedFor": ["undo action history (session-only, unbounded, no redo)"],
+      "complexity": { "push": "O(1)", "pop": "O(1)", "peek": "O(1)" }
+    },
+    {
+      "name": "Queue<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "singly linked nodes with head+tail references",
+      "usedFor": ["FIFO reminder delivery"],
+      "complexity": { "enqueue": "O(1)", "dequeue": "O(1)", "peek": "O(1)" }
+    },
+    {
+      "name": "PriorityQueue<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "binary max-heap stored inside a DynamicArray",
+      "usedFor": ["hero alert banner: only the single highest-priority notification is shown"],
+      "priorityLevels": {
+        "dangerSpending": 100,
+        "debtOverdue": 90,
+        "dailyBudgetExceeded": 80,
+        "refillDue": 60,
+        "dailyReminder": 20
+      },
+      "complexity": { "insert": "O(log n)", "peek": "O(1)", "poll": "O(log n)" }
+    },
+    {
+      "name": "CircularBuffer<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "fixed-size ring array with head index and size counter",
+      "usedFor": ["recent-20-transactions dashboard widget", "recent-alert notification history (capacity 20)"],
+      "complexity": { "add": "O(1)", "get": "O(1)" }
+    },
+    {
+      "name": "Graph<T>",
+      "package": "com.budgetguardian.datastructures",
+      "backing": "HashMap<T, DoublyLinkedList<Edge<T>>> adjacency list, directed weighted multigraph",
+      "usedFor": ["account transfer network", "DFS/BFS traversal and visualization"],
+      "complexity": {
+        "addVertex": "O(1)", "addEdge": "O(1)",
+        "dfs": "O(V+E), iterative using an explicit Stack",
+        "bfs": "O(V+E), using a Queue",
+        "hasPath": "O(V+E)", "totalFlow": "O(deg(from))"
+      }
+    }
+  ],
+  "customAlgorithms": [
+    { "name": "MergeSort", "package": "com.budgetguardian.algorithm.sorting", "complexity": "O(n log n)", "stable": true, "notes": "Available strategy implementation; demonstrates stable ordering." },
+    { "name": "QuickSort", "package": "com.budgetguardian.algorithm.sorting", "complexity": "O(n log n) average, O(n^2) worst", "stable": false, "notes": "Median-of-three pivot selection to reduce worst-case likelihood." },
+    { "name": "HeapSort", "package": "com.budgetguardian.algorithm.sorting", "complexity": "O(n log n)", "stable": false, "notes": "Used by ReportService to rank categories by spend." },
+    { "name": "LinearSearch", "package": "com.budgetguardian.algorithm.searching", "complexity": "O(n)", "notes": "Used by SearchService for free-text ledger search." },
+    { "name": "BinarySearch", "package": "com.budgetguardian.algorithm.searching", "complexity": "O(log n)", "notes": "Requires pre-sorted DynamicArray input." }
+  ],
+  "domainModel": {
+    "accounts": {
+      "count": 4,
+      "fixed": true,
+      "list": ["Saving", "Scholarship", "SCB", "TrueMoney"]
+    },
+    "categories": {
+      "count": 11,
+      "list": ["Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Education", "Investment", "Gift", "Alcohol", "Gambling"],
+      "dangerCategories": ["Alcohol", "Gambling"]
+    },
+    "transactionTypes": ["EXPENSE", "INCOME", "WITHDRAWAL"],
+    "money": {
+      "storage": "long satang (integer, 1 THB = 100 satang)",
+      "rationale": "exact arithmetic, no floating-point rounding drift",
+      "utility": "com.budgetguardian.util.Money (format/parse THB <-> satang)"
+    },
+    "debt": {
+      "directions": ["PAYABLE", "RECEIVABLE"],
+      "statuses": ["OPEN", "SETTLED"],
+      "partialPayments": true,
+      "autoSettle": "a debt transitions to SETTLED once the sum of its payments reaches the full amount"
+    },
+    "refillItems": {
+      "detection": "duplicate purchase of the same normalized item name triggers a 'keep as refillable?' prompt",
+      "persistence": "only a 'Yes' answer is stored permanently; 'No' stores nothing so the prompt re-appears on the next duplicate",
+      "interval": "running average of days between purchases, recalculated on every confirmed purchase"
+    },
+    "transfers": {
+      "rule": "transfers are never expenses or income; they only move balance between two accounts and are tracked in a dedicated model, table, service and graph edge"
+    }
+  },
+  "businessRules": {
+    "dailyBudget": {
+      "defaultSatang": 18000,
+      "defaultTHB": 180,
+      "alertPriority": 80,
+      "condition": "todaySpend > dailyBudget"
+    },
+    "dangerSpending": {
+      "categories": ["Alcohol", "Gambling"],
+      "window": "calendar week, Monday to Sunday",
+      "defaultLimitSatang": 20000,
+      "defaultLimitTHB": 200,
+      "alertPriority": 100,
+      "condition": "combinedWeeklySpend > dangerWeeklyLimit"
+    },
+    "debtOverdue": {
+      "alertPriority": 90,
+      "condition": "an OPEN debt has a dueDate strictly before today"
+    },
+    "refillOverdue": {
+      "alertPriority": 60,
+      "condition": "today is after (lastPurchase + averageIntervalDays)"
+    },
+    "dailyReminder": {
+      "defaultTime": "20:00",
+      "alertPriority": 20,
+      "condition": "no EXPENSE transaction recorded for today, checked once per calendar day by a 60-second-tick daemon scheduler"
+    },
+    "undo": {
+      "scope": "every mutating operation (add/edit/delete transaction, transfer, debt payment, refill confirmation)",
+      "redo": false,
+      "persistence": "session-only; the undo stack is not saved to the database and is empty after every application restart"
+    }
+  },
+  "database": {
+    "engine": "SQLite",
+    "accessPattern": "hydrated fully into memory once at startup by StartupLoader; never queried again until the next application start",
+    "schemaFile": "src/main/resources/db/schema.sql",
+    "tables": [
+      { "name": "account", "seeded": true, "rows": 4 },
+      { "name": "category", "seeded": true, "rows": 11 },
+      { "name": "txn", "description": "expense/income/withdrawal ledger" },
+      { "name": "transfer", "description": "account-to-account balance moves, never expenses" },
+      { "name": "debt", "description": "payable/receivable debts with OPEN/SETTLED status" },
+      { "name": "debt_payment", "description": "partial payments against a debt" },
+      { "name": "refill_item", "description": "only 'Yes'-confirmed refillable items" },
+      { "name": "setting", "seeded": true, "description": "daily_budget, danger_weekly_limit, reminder_time" }
+    ]
+  },
+  "uiViews": [
+    { "name": "Dashboard", "class": "com.budgetguardian.view.DashboardView" },
+    { "name": "Calendar", "class": "com.budgetguardian.view.CalendarView" },
+    { "name": "Transactions", "class": "com.budgetguardian.view.TransactionsView" },
+    { "name": "Transfers", "class": "com.budgetguardian.view.TransfersView" },
+    { "name": "Debt", "class": "com.budgetguardian.view.DebtView" },
+    { "name": "Refills", "class": "com.budgetguardian.view.RefillsView" },
+    { "name": "Reports", "class": "com.budgetguardian.view.ReportsView" },
+    { "name": "Graph", "class": "com.budgetguardian.view.GraphView" },
+    { "name": "Search", "class": "com.budgetguardian.view.SearchView" },
+    { "name": "Settings", "class": "com.budgetguardian.view.SettingsView" }
+  ],
+  "keyboardShortcuts": {
+    "Ctrl+N": "new transaction",
+    "Ctrl+Z": "undo last action",
+    "Ctrl+F": "focus search"
+  },
+  "testing": {
+    "framework": "JUnit 5",
+    "totalTests": 231,
+    "categories": [
+      "datastructures (exhaustive per-structure suites)",
+      "algorithm (sorting/searching correctness + stability)",
+      "repository (JDBC round-trip against temp-file SQLite)",
+      "service (business logic, undo round-trips, rule engine, reminders)",
+      "integration (full-stack session test)",
+      "architecture guard (fails build on forbidden java.util collection imports)",
+      "util (Money formatting/parsing round-trips)"
+    ]
+  },
+  "packaging": {
+    "fatJar": {
+      "plugin": "maven-shade-plugin",
+      "output": "target/budget-guardian-<version>-app.jar",
+      "mainClass": "com.budgetguardian.app.Launcher",
+      "reason": "Launcher does not extend javafx.application.Application directly, avoiding the 'JavaFX runtime components are missing' error when JavaFX is on the classpath instead of the module path."
+    },
+    "nativeInstaller": {
+      "tool": "jpackage (bundled with JDK 21)",
+      "scripts": ["scripts/package-windows.ps1", "scripts/package-unix.sh"],
+      "outputDir": "target/installer/",
+      "supportedTypes": ["msi", "exe", "app-image (Windows)", "platform default, app-image (macOS/Linux)"]
+    }
+  }
+}
