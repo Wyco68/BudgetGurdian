@@ -91,7 +91,7 @@ public final class GraphView implements View {
 
     private Node header() {
         Label title = new Label("Transfer Network");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         start.setConverter(new javafx.util.StringConverter<>() {
             @Override
             public String toString(Account a) {
@@ -194,7 +194,7 @@ public final class GraphView implements View {
         arrow.setFill(Color.web("#2dd4bf"));
 
         Text label = new Text((sx + ex) / 2, (sy + ey) / 2 - 4, Money.formatPlain(flow));
-        label.setFill(Color.web("#8b95a3"));
+        label.setFill(Color.web("#93a0b1"));
         label.setFont(Font.font(11));
 
         canvas.getChildren().addAll(line, arrow, label);
@@ -202,11 +202,11 @@ public final class GraphView implements View {
 
     private void drawNode(double x, double y, String name) {
         Circle circle = new Circle(x, y, NODE);
-        circle.setFill(Color.web("#1e242c"));
+        circle.setFill(Color.web("#273040"));
         circle.setStroke(Color.web("#2dd4bf"));
         circle.setStrokeWidth(2);
         Text text = new Text(name);
-        text.setFill(Color.web("#e6e9ee"));
+        text.setFill(Color.web("#e8ebf0"));
         text.setFont(Font.font(12));
         text.setX(x - text.getLayoutBounds().getWidth() / 2);
         text.setY(y + 4);

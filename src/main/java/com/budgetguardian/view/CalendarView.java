@@ -112,7 +112,7 @@ public final class CalendarView implements View {
             current = YearMonth.from(today.get());
             refresh();
         });
-        monthLabel.getStyleClass().add("section-label");
+        monthLabel.getStyleClass().add("page-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bar = new HBox(8, monthLabel, spacer, todayButton, prev, next);

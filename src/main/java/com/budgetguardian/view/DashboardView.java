@@ -69,13 +69,24 @@ public final class DashboardView implements View {
     @Override
     public void refresh() {
         root.getChildren().setAll(
+                pageHeader(),
                 budgetCard(),
+                sectionLabel("Accounts"),
                 balancesRow(),
+                sectionLabel("This Month"),
                 monthlyStatsRow(),
                 sectionLabel("Category Totals — " + YearMonth.from(today.get())),
                 categoryTotals(),
                 sectionLabel("Recent Transactions"),
                 recentTransactions());
+    }
+
+    private Node pageHeader() {
+        Label title = new Label("Dashboard");
+        title.getStyleClass().add("page-title");
+        Label sub = new Label(today.get().format(UiFormat.DATE));
+        sub.getStyleClass().add("view-subtitle");
+        return new VBox(2, title, sub);
     }
 
     private Node budgetCard() {

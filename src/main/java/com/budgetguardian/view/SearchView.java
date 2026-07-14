@@ -43,7 +43,7 @@ public final class SearchView implements View {
         query.setPromptText("Search transactions by reason, item, account or category…");
         query.textProperty().addListener((obs, old, text) -> runSearch(text));
         Label title = new Label("Search");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         count.getStyleClass().add("muted");
         HBox bar = new HBox(12, title, query, count);
         bar.setAlignment(Pos.CENTER_LEFT);

@@ -35,7 +35,7 @@ public final class SettingsView implements View {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("view-root");
         Label title = new Label("Settings");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         status.getStyleClass().add("note-ok");
         root.getChildren().addAll(title, form());
         refresh();

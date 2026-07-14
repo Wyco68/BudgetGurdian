@@ -92,7 +92,7 @@ public final class TransactionsView implements View {
 
     private Node header() {
         Label title = new Label("Transactions");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 

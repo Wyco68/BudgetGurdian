@@ -100,7 +100,7 @@ public final class ReportsView implements View {
 
     private Node header() {
         Label title = new Label("Reports");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
 
         ToggleGroup group = new ToggleGroup();
         HBox toggles = new HBox(8);

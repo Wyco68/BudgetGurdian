@@ -70,7 +70,7 @@ public final class DebtView implements View {
 
     private Node header() {
         Label title = new Label("Debts");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Button add = new Button("＋ New Debt");

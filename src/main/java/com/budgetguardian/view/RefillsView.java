@@ -38,7 +38,7 @@ public final class RefillsView implements View {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("view-root");
         Label title = new Label("Refillable Items");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         buildTable();
         root.getChildren().addAll(title, table);
         VBox.setVgrow(table, Priority.ALWAYS);

@@ -76,7 +76,7 @@ public final class TransfersView implements View {
 
     private Node header() {
         Label title = new Label("Transfers");
-        title.getStyleClass().add("section-label");
+        title.getStyleClass().add("page-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Button add = new Button("＋ New Transfer");

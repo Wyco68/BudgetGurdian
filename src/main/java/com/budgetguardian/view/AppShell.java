@@ -29,15 +29,16 @@ public final class AppShell {
 
     public AppShell(ServiceContext services) {
         root.getStyleClass().add("app-shell");
-        navRail.getStyleClass().add("nav-rail");
-        navRail.setPadding(new Insets(16, 8, 16, 8));
 
-        Label brand = new Label("Budget Guardian");
-        brand.getStyleClass().add("brand");
-        brand.setPadding(new Insets(4, 8, 16, 8));
-        navRail.getChildren().add(brand);
+        // Left column: brand header, the (growing) button list, then a footer
+        // pinned to the bottom with keyboard-shortcut hints.
+        VBox rail = new VBox();
+        rail.getStyleClass().add("nav-rail");
+        rail.setPadding(new Insets(16, 12, 14, 12));
+        rail.getChildren().addAll(brandHeader(), navRail, railSpacer(), navFooter());
+        VBox.setVgrow(navRail, Priority.ALWAYS);
 
-        root.setLeft(navRail);
+        root.setLeft(rail);
 
         // Top: a slim toolbar with the notification bell, above the hero banner.
         Region toolbarSpacer = new Region();
@@ -49,6 +50,49 @@ public final class AppShell {
 
         VBox top = new VBox(toolbar, new HeroBanner(services).getNode());
         root.setTop(top);
+    }
+
+    /** Brand block: a teal mark, the product name and a muted tagline. */
+    private Region brandHeader() {
+        Label mark = new Label("◆");
+        mark.getStyleClass().add("brand-mark");
+        Label name = new Label("Budget Guardian");
+        name.getStyleClass().add("brand");
+        HBox titleRow = new HBox(8, mark, name);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label sub = new Label("Personal finance");
+        sub.getStyleClass().add("brand-sub");
+
+        VBox header = new VBox(2, titleRow, sub);
+        header.setPadding(new Insets(4, 6, 16, 6));
+        return header;
+    }
+
+    /** Flexible gap that pushes the footer to the bottom of the rail. */
+    private Region railSpacer() {
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        return spacer;
+    }
+
+    /** Footer with the app's global keyboard shortcuts. */
+    private Region navFooter() {
+        VBox footer = new VBox(6,
+                shortcutRow("Ctrl N", "New transaction"),
+                shortcutRow("Ctrl F", "Search"),
+                shortcutRow("Ctrl Z", "Undo"));
+        footer.getStyleClass().add("nav-footer");
+        return footer;
+    }
+
+    private HBox shortcutRow(String keys, String label) {
+        Label kbd = new Label(keys);
+        kbd.getStyleClass().add("kbd");
+        Label text = new Label(label);
+        HBox row = new HBox(8, kbd, text);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 
     /** Registers a view and adds its nav-rail button. First registered is shown. */
