@@ -66,3 +66,27 @@ mvn clean javafx:run
 ```bash
 mvn test
 ```
+
+231 JUnit 5 tests cover the data structures, algorithms, repositories, services,
+undo, rules, reports and a full-stack integration flow. An architecture-guard
+test fails the build if any business-logic package imports a `java.util`
+collection.
+
+## Package
+
+`mvn package` produces a self-contained fat jar
+(`target/budget-guardian-<version>-app.jar`) that runs with `java -jar`.
+
+To build a native installer with `jpackage` (bundled with JDK 21):
+
+```bash
+# Windows (MSI installer, or app-image for a portable folder)
+pwsh scripts/package-windows.ps1
+pwsh scripts/package-windows.ps1 -Type app-image
+
+# macOS / Linux
+./scripts/package-unix.sh
+./scripts/package-unix.sh app-image
+```
+
+Installers are written to `target/installer/`.
