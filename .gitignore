@@ -11,21 +11,3 @@ target/
 dependency-reduced-pom.xml
 hs_err_pid*
 
-# AI agent files
-CLAUDE.md
-CLAUDE.local.md
-MEMORY.md
-memory/
-.claude/
-.claude-*
-.cursor/
-.cursorrules
-.aider*
-.copilot/
-copilot-instructions.md
-.windsurf/
-.windsurfrules
-AGENTS.md
-GEMINI.md
-.gemini/
-launch.json
