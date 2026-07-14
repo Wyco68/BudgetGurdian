@@ -33,18 +33,21 @@ $out = "target/installer"
 New-Item -ItemType Directory -Force $out | Out-Null
 
 Write-Host "Running jpackage (type: $Type) ..."
-jpackage `
-    --type $Type `
-    --name "Budget Guardian" `
-    --app-version $version `
-    --input target `
-    --main-jar $jar `
-    --main-class com.budgetguardian.app.Launcher `
-    --dest $out `
-    --vendor "Budget Guardian" `
-    --description "Personal finance data-structures showcase" `
-    --win-dir-chooser `
-    --win-menu `
-    --win-shortcut
+$jpackageArgs = @(
+    "--type", $Type,
+    "--name", "Budget Guardian",
+    "--app-version", $version,
+    "--input", "target",
+    "--main-jar", $jar,
+    "--main-class", "com.budgetguardian.app.Launcher",
+    "--dest", $out,
+    "--vendor", "Budget Guardian",
+    "--description", "Personal finance data-structures showcase"
+)
+if ($Type -ne "app-image") {
+    # These installer-behavior flags are only valid for msi/exe, not app-image.
+    $jpackageArgs += @("--win-dir-chooser", "--win-menu", "--win-shortcut")
+}
+& jpackage @jpackageArgs
 
 Write-Host "Done. Output in $out"
