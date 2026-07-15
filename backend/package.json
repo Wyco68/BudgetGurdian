@@ -1,0 +1,28 @@
+{
+  "name": "budget-guardian-backend",
+  "version": "1.0.0",
+  "description": "REST persistence backend for the Budget Guardian desktop app (Express + Prisma + Supabase PostgreSQL)",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.js",
+    "check": "node --check src/server.js && prisma validate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "helmet": "^8.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.10.0"
+  }
+}
