@@ -39,7 +39,9 @@ import java.util.concurrent.TimeUnit;
  * shell with its views, and start the daemon {@link ReminderScheduler} that
  * marshals its work onto the JavaFX thread via {@link Platform#runLater}.</p>
  *
- * <p>The database lives next to the app as {@code budget.db}.</p>
+ * <p>The database lives at a stable per-user location (see
+ * {@link #databaseFile()}) so every launch — from Maven or the packaged
+ * executable — shares the same data.</p>
  */
 public final class Main extends Application {
 
@@ -48,7 +50,7 @@ public final class Main extends Application {
 
     @Override
     public void start(Stage stage) throws SQLException {
-        database = new DatabaseManager(Path.of("budget.db"));
+        database = new DatabaseManager(databaseFile());
         database.open();
         ServiceContext services = new ServiceContext(database.getConnection(), LocalDate::now);
 
@@ -74,6 +76,69 @@ public final class Main extends Application {
         stage.show();
 
         startReminderScheduler(services);
+    }
+
+    /**
+     * Resolves the database to a single stable per-user location, independent
+     * of the working directory the app was launched from.
+     *
+     * <p>A relative {@code "budget.db"} resolves against the current working
+     * directory, which differs between launch methods (running from Maven vs.
+     * double-clicking the packaged executable) — that would silently create a
+     * separate database per launch context. Anchoring it under the OS
+     * per-user data directory guarantees every launch opens the same file.</p>
+     *
+     * <ul>
+     *   <li>Windows: {@code %LOCALAPPDATA%\BudgetGuardian\budget.db}</li>
+     *   <li>macOS: {@code ~/Library/Application Support/BudgetGuardian/budget.db}</li>
+     *   <li>Linux/other: {@code ~/.budgetguardian/budget.db}</li>
+     * </ul>
+     *
+     * <p>A legacy {@code budget.db} in the working directory is migrated to the
+     * new location on first run so existing data is not lost.</p>
+     */
+    private static Path databaseFile() {
+        Path dir = userDataDir();
+        try {
+            java.nio.file.Files.createDirectories(dir);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Cannot create data directory: " + dir, e);
+        }
+        Path target = dir.resolve("budget.db");
+        migrateLegacyDatabase(target);
+        return target;
+    }
+
+    private static Path userDataDir() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String home = System.getProperty("user.home", ".");
+        if (os.contains("win")) {
+            String localAppData = System.getenv("LOCALAPPDATA");
+            Path base = (localAppData != null && !localAppData.isBlank())
+                    ? Path.of(localAppData)
+                    : Path.of(home, "AppData", "Local");
+            return base.resolve("BudgetGuardian");
+        }
+        if (os.contains("mac")) {
+            return Path.of(home, "Library", "Application Support", "BudgetGuardian");
+        }
+        return Path.of(home, ".budgetguardian");
+    }
+
+    /** Copies a working-directory {@code budget.db} to the stable path once, if present. */
+    private static void migrateLegacyDatabase(Path target) {
+        if (java.nio.file.Files.exists(target)) {
+            return;
+        }
+        Path legacy = Path.of("budget.db");
+        if (java.nio.file.Files.exists(legacy)) {
+            try {
+                java.nio.file.Files.copy(legacy, target);
+            } catch (java.io.IOException e) {
+                // Non-fatal: a fresh database will be created at the target path.
+                System.err.println("Could not migrate legacy database: " + e.getMessage());
+            }
+        }
     }
 
     /** Global accelerators: Ctrl+N new transaction, Ctrl+Z undo, Ctrl+F search. */
