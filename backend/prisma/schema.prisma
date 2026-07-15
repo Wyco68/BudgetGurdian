@@ -1,0 +1,157 @@
+// Budget Guardian — persistence schema (Supabase PostgreSQL).
+//
+// Mirrors the desktop application's domain one-to-one so DTOs map cleanly
+// onto the existing Java records. Design notes:
+//
+//  * Money is stored as BIGINT satang (1 THB = 100 satang) — exactly the
+//    `long amountSatang` the desktop models use. Never floating point.
+//  * Primary keys are BIGSERIAL (autoincrement BigInt), not UUID: the desktop
+//    models identify rows by `long` ids and must not be modified. See
+//    docs/ARCHITECTURE.md (ADR-2) for the trade-off discussion.
+//  * `txn` ids are also client-suppliable: undo of a delete restores a row
+//    under its original id (see the desktop UndoService).
+//  * Dates are DATE columns; created_at timestamps come from the client and
+//    are treated as timezone-naive UTC (helpers in src/utils/dates.js).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+  WITHDRAWAL
+}
+
+enum DebtDirection {
+  PAYABLE
+  RECEIVABLE
+}
+
+enum DebtStatus {
+  OPEN
+  SETTLED
+}
+
+/// The four fixed accounts (seeded; never inserted or deleted by the API).
+model Account {
+  id            String   @id
+  name          String
+  balanceSatang BigInt   @default(0) @map("balance_satang")
+  displayOrder  Int      @map("display_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  transactions  Transaction[]
+  transfersFrom Transfer[]    @relation("TransferFrom")
+  transfersTo   Transfer[]    @relation("TransferTo")
+  debtPayments  DebtPayment[]
+
+  @@map("account")
+}
+
+/// The eleven fixed spending categories (seeded; read-only through the API).
+model Category {
+  id       Int     @id
+  name     String  @unique
+  isDanger Boolean @default(false) @map("is_danger")
+
+  transactions Transaction[]
+
+  @@map("category")
+}
+
+/// One ledger row: expense, income or withdrawal.
+model Transaction {
+  id           BigInt          @id @default(autoincrement())
+  type         TransactionType
+  accountId    String          @map("account_id")
+  categoryId   Int?            @map("category_id")
+  itemName     String?         @map("item_name")
+  amountSatang BigInt          @map("amount_satang")
+  reason       String
+  txnDate      DateTime        @map("txn_date") @db.Date
+  createdAt    DateTime        @map("created_at")
+
+  account  Account   @relation(fields: [accountId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([txnDate])
+  @@index([categoryId])
+  @@index([itemName])
+  @@map("txn")
+}
+
+/// Transfers move money between accounts without counting as income/expense.
+model Transfer {
+  id           BigInt   @id @default(autoincrement())
+  fromAccount  String   @map("from_account")
+  toAccount    String   @map("to_account")
+  amountSatang BigInt   @map("amount_satang")
+  reason       String
+  transferDate DateTime @map("transfer_date") @db.Date
+  createdAt    DateTime @map("created_at")
+
+  from Account @relation("TransferFrom", fields: [fromAccount], references: [id])
+  to   Account @relation("TransferTo", fields: [toAccount], references: [id])
+
+  @@index([transferDate])
+  @@map("transfer")
+}
+
+/// Money owed to or by the user; settled once payments cover the amount.
+model Debt {
+  id           BigInt        @id @default(autoincrement())
+  direction    DebtDirection
+  person       String
+  amountSatang BigInt        @map("amount_satang")
+  dueDate      DateTime?     @map("due_date") @db.Date
+  status       DebtStatus    @default(OPEN)
+  settledDate  DateTime?     @map("settled_date") @db.Date
+  createdAt    DateTime      @map("created_at")
+
+  payments DebtPayment[]
+
+  @@index([status])
+  @@map("debt")
+}
+
+/// Partial payment against a debt; deleting the debt cascades here.
+model DebtPayment {
+  id           BigInt   @id @default(autoincrement())
+  debtId       BigInt   @map("debt_id")
+  accountId    String   @map("account_id")
+  amountSatang BigInt   @map("amount_satang")
+  paymentDate  DateTime @map("payment_date") @db.Date
+  createdAt    DateTime @map("created_at")
+
+  debt    Debt    @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([debtId])
+  @@map("debt_payment")
+}
+
+/// Items the user confirmed as recurring purchases ("refills").
+model RefillItem {
+  name          String   @id
+  intervalDays  Float    @map("interval_days")
+  lastPurchase  DateTime @map("last_purchase") @db.Date
+  purchaseCount Int      @map("purchase_count")
+
+  @@map("refill_item")
+}
+
+/// Free-form key-value settings (daily budget, danger limit, reminder time).
+model Setting {
+  key   String @id
+  value String
+
+  @@map("setting")
+}
