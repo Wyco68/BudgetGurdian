@@ -26,7 +26,16 @@ if [ ! -f "target/${JAR}" ]; then
     exit 1
 fi
 
-OUT="target/installer"
+# Stage ONLY the fat jar in a dedicated input directory. jpackage copies the
+# whole --input tree into the app image, so --input must never contain the
+# --dest output (that nests the installer inside itself on every rebuild).
+INPUT="target/app-input"
+rm -rf "${INPUT}"
+mkdir -p "${INPUT}"
+cp "target/${JAR}" "${INPUT}/${JAR}"
+
+OUT="target/dist"
+rm -rf "${OUT}"
 mkdir -p "${OUT}"
 
 TYPE_ARG=()
@@ -39,7 +48,7 @@ jpackage \
     "${TYPE_ARG[@]}" \
     --name "Budget Guardian" \
     --app-version "${VERSION}" \
-    --input target \
+    --input "${INPUT}" \
     --main-jar "${JAR}" \
     --main-class com.budgetguardian.app.Launcher \
     --dest "${OUT}" \

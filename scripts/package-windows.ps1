@@ -29,7 +29,17 @@ if (-not (Test-Path "target/$jar")) {
     throw "Expected target/$jar was not produced."
 }
 
-$out = "target/installer"
+# Stage ONLY the fat jar in a dedicated input directory. jpackage copies the
+# entire --input tree into the app image, so --input must never point at a
+# directory that contains the --dest output (doing so nests the installer
+# inside itself on every rebuild).
+$input = "target/app-input"
+if (Test-Path $input) { Remove-Item $input -Recurse -Force }
+New-Item -ItemType Directory -Force $input | Out-Null
+Copy-Item "target/$jar" (Join-Path $input $jar)
+
+$out = "target/dist"
+if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Force $out | Out-Null
 
 Write-Host "Running jpackage (type: $Type) ..."
@@ -37,7 +47,7 @@ $jpackageArgs = @(
     "--type", $Type,
     "--name", "Budget Guardian",
     "--app-version", $version,
-    "--input", "target",
+    "--input", $input,
     "--main-jar", $jar,
     "--main-class", "com.budgetguardian.app.Launcher",
     "--dest", $out,
