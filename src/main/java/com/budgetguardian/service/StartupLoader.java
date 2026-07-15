@@ -18,7 +18,7 @@ import com.budgetguardian.repository.SettingsRepository;
 import com.budgetguardian.repository.TransactionRepository;
 import com.budgetguardian.repository.TransferRepository;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 
 /**
  * Hydrates the {@link DataStore} from SQLite once at startup.
@@ -67,7 +67,7 @@ public final class StartupLoader {
             copyDebts(store, debts.findAll(), debts.findAllPayments());
             copyRefills(store, refills.findAll());
             copySettings(store, settings.findAll());
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to load data from database", e);
         }
         store.rebuildTotals();

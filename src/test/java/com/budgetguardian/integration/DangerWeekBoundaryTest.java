@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -34,14 +33,14 @@ class DangerWeekBoundaryTest {
     private ServiceContext ctx;
 
     @BeforeEach
-    void open() throws SQLException {
+    void open() throws Exception {
         db = new DatabaseManager(tempDir.resolve("danger.db"));
         db.open();
         ctx = new ServiceContext(db.getConnection(), LocalDate::now);
     }
 
     @AfterEach
-    void close() throws SQLException {
+    void close() throws Exception {
         db.close();
     }
 

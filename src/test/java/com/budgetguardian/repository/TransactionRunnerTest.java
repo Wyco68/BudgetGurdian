@@ -4,7 +4,10 @@ import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteAccountRepository;
+import com.budgetguardian.repository.sqlite.SqliteTransactionRepository;
+import com.budgetguardian.repository.sqlite.SqliteTransactionRunner;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -23,10 +26,10 @@ class TransactionRunnerTest extends RepositoryTestBase {
     }
 
     @Test
-    void commitsOnSuccess() throws SQLException {
-        TransactionRunner runner = new TransactionRunner(connection);
-        TransactionRepository transactions = new TransactionRepository(connection);
-        AccountRepository accounts = new AccountRepository(connection);
+    void commitsOnSuccess() throws Exception {
+        TransactionRunner runner = new SqliteTransactionRunner(connection);
+        TransactionRepository transactions = new SqliteTransactionRepository(connection);
+        AccountRepository accounts = new SqliteAccountRepository(connection);
 
         long id = runner.run(() -> {
             Transaction saved = transactions.insert(expense());
@@ -40,12 +43,12 @@ class TransactionRunnerTest extends RepositoryTestBase {
     }
 
     @Test
-    void rollsBackEverythingOnFailure() throws SQLException {
-        TransactionRunner runner = new TransactionRunner(connection);
-        TransactionRepository transactions = new TransactionRepository(connection);
-        AccountRepository accounts = new AccountRepository(connection);
+    void rollsBackEverythingOnFailure() throws Exception {
+        TransactionRunner runner = new SqliteTransactionRunner(connection);
+        TransactionRepository transactions = new SqliteTransactionRepository(connection);
+        AccountRepository accounts = new SqliteAccountRepository(connection);
 
-        assertThrows(SQLException.class, () -> runner.run(() -> {
+        assertThrows(StorageException.class, () -> runner.run(() -> {
             transactions.insert(expense());                    // would succeed alone
             accounts.updateBalance("KBANK", 1);                // unknown account → throws
             return null;
@@ -56,12 +59,12 @@ class TransactionRunnerTest extends RepositoryTestBase {
     }
 
     @Test
-    void restoresAutoCommitAfterRun() throws SQLException {
-        TransactionRunner runner = new TransactionRunner(connection);
+    void restoresAutoCommitAfterRun() throws Exception {
+        TransactionRunner runner = new SqliteTransactionRunner(connection);
         runner.run(() -> 1);
         assertTrue(connection.getAutoCommit(), "auto-commit must be restored");
-        assertThrows(SQLException.class, () -> runner.run(() -> {
-            throw new SQLException("boom");
+        assertThrows(StorageException.class, () -> runner.run(() -> {
+            throw new StorageException("boom");
         }));
         assertTrue(connection.getAutoCommit(), "auto-commit must be restored after rollback too");
     }

@@ -6,7 +6,7 @@ import com.budgetguardian.repository.AccountRepository;
 import com.budgetguardian.repository.TransactionRunner;
 import com.budgetguardian.repository.TransferRepository;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 
 /**
  * Business logic for transfers between accounts.
@@ -60,7 +60,7 @@ public final class TransferService {
                 accounts.updateBalance(to.id(), to.balanceSatang() + transfer.amountSatang());
                 return inserted;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save transfer", e);
         }
         store.transfers().addLast(saved);
@@ -83,7 +83,7 @@ public final class TransferService {
                 accounts.updateBalance(to.id(), to.balanceSatang() - transfer.amountSatang());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         store.transfers().remove(transfer);

@@ -1,15 +1,15 @@
 package com.budgetguardian.repository;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
- * Wraps multi-statement repository work in one SQL transaction.
+ * Executes multi-repository work as one logical unit.
  *
- * <p><b>Purpose:</b> service-layer operations often touch several tables
+ * <p><b>Purpose:</b> service-layer operations often touch several stores
  * (insert expense + update balance; insert transfer + update two balances;
- * insert payment + flip debt status). Either all rows land or none — this
- * class is the only place commit/rollback logic lives.</p>
+ * insert payment + flip debt status). The SQLite implementation wraps the
+ * work in a real SQL transaction; the REST implementation executes each call
+ * immediately — every endpoint is atomic server-side, and the desktop keeps
+ * memory untouched if any call fails (see architecture docs for the
+ * cross-call consistency note and the planned offline sync queue).</p>
  *
  * <p><b>Usage:</b></p>
  * <pre>{@code
@@ -19,45 +19,23 @@ import java.sql.SQLException;
  *     return txnId;
  * });
  * }</pre>
- *
- * <p><b>Time complexity:</b> O(1) overhead around the wrapped work.</p>
  */
-public final class TransactionRunner {
+public interface TransactionRunner {
 
     /**
-     * Unit of SQL work executed atomically.
+     * Unit of storage work executed as one logical operation.
      *
      * @param <T> result type
      */
     @FunctionalInterface
-    public interface SqlWork<T> {
-        T execute() throws SQLException;
-    }
-
-    private final Connection connection;
-
-    public TransactionRunner(Connection connection) {
-        this.connection = connection;
+    interface Work<T> {
+        T execute() throws StorageException;
     }
 
     /**
-     * Runs {@code work} inside a transaction: commit on success, rollback on
-     * any exception (which is rethrown).
+     * Runs {@code work}; implementations decide the atomicity guarantee.
      *
-     * @throws SQLException from the work or the commit
+     * @throws StorageException from the work or the commit
      */
-    public <T> T run(SqlWork<T> work) throws SQLException {
-        boolean previousAutoCommit = connection.getAutoCommit();
-        connection.setAutoCommit(false);
-        try {
-            T result = work.execute();
-            connection.commit();
-            return result;
-        } catch (Exception e) {
-            connection.rollback();
-            throw e;
-        } finally {
-            connection.setAutoCommit(previousAutoCommit);
-        }
-    }
+    <T> T run(Work<T> work) throws StorageException;
 }

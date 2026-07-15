@@ -4,7 +4,8 @@ import com.budgetguardian.datastructures.HashMap;
 import com.budgetguardian.model.RefillItem;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteRefillRepository;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,8 +18,8 @@ class RefillRepositoryTest extends RepositoryTestBase {
     private static final LocalDate DAY = LocalDate.of(2026, 7, 6);
 
     @Test
-    void upsertInsertsThenUpdates() throws SQLException {
-        RefillRepository repository = new RefillRepository(connection);
+    void upsertInsertsThenUpdates() throws Exception {
+        RefillRepository repository = new SqliteRefillRepository(connection);
         RefillItem bread = new RefillItem("bread", 7, DAY, 2);
         repository.upsert(bread);
         HashMap<String, RefillItem> items = repository.findAll();
@@ -33,11 +34,11 @@ class RefillRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void deleteRemovesRow() throws SQLException {
-        RefillRepository repository = new RefillRepository(connection);
+    void deleteRemovesRow() throws Exception {
+        RefillRepository repository = new SqliteRefillRepository(connection);
         repository.upsert(new RefillItem("milk", 3, DAY, 2));
         repository.delete("milk");
         assertTrue(repository.findAll().isEmpty());
-        assertThrows(SQLException.class, () -> repository.delete("milk"));
+        assertThrows(StorageException.class, () -> repository.delete("milk"));
     }
 }

@@ -2,7 +2,7 @@ package com.budgetguardian.service;
 
 import com.budgetguardian.repository.SettingsRepository;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 import java.time.LocalTime;
 
 /**
@@ -57,7 +57,7 @@ public final class SettingsService {
         }
         try {
             settings.put(key, value);
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save setting " + key, e);
         }
         store.settings().put(key, value);

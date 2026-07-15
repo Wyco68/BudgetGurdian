@@ -5,7 +5,8 @@ import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteTransactionRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -25,8 +26,8 @@ class TransactionRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void insertAssignsIdAndRoundTrips() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
+    void insertAssignsIdAndRoundTrips() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction saved = repository.insert(expense(DAY, 4_500));
         assertTrue(saved.id() > 0);
         DoublyLinkedList<Transaction> ledger = repository.findAll();
@@ -35,8 +36,8 @@ class TransactionRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void incomeWithNullCategoryRoundTrips() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
+    void incomeWithNullCategoryRoundTrips() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction income = new Transaction(
                 0, TransactionType.INCOME, "SAVING", null, null, 900_000, "scholarship", DAY, NOW);
         Transaction saved = repository.insert(income);
@@ -47,8 +48,8 @@ class TransactionRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void findAllIsChronologicalByDateThenId() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
+    void findAllIsChronologicalByDateThenId() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction later = repository.insert(expense(DAY.plusDays(1), 100));   // inserted first
         Transaction earlier = repository.insert(expense(DAY, 200));             // inserted second
         Transaction sameDay = repository.insert(expense(DAY, 300));
@@ -59,8 +60,8 @@ class TransactionRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void updateRewritesColumns() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
+    void updateRewritesColumns() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction saved = repository.insert(expense(DAY, 4_500));
         Transaction edited = new Transaction(saved.id(), TransactionType.EXPENSE, "SAVING", 2,
                 null, 9_900, "taxi", DAY.plusDays(1), NOW);
@@ -69,26 +70,26 @@ class TransactionRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void deleteRemovesRow() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
+    void deleteRemovesRow() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction saved = repository.insert(expense(DAY, 4_500));
         repository.delete(saved.id());
         assertTrue(repository.findAll().isEmpty());
     }
 
     @Test
-    void updateOrDeleteMissingRowThrows() throws SQLException {
-        TransactionRepository repository = new TransactionRepository(connection);
-        assertThrows(SQLException.class, () -> repository.delete(999));
+    void updateOrDeleteMissingRowThrows() throws Exception {
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
+        assertThrows(StorageException.class, () -> repository.delete(999));
         Transaction ghost = expense(DAY, 100).withId(999);
-        assertThrows(SQLException.class, () -> repository.update(ghost));
+        assertThrows(StorageException.class, () -> repository.update(ghost));
     }
 
     @Test
     void foreignKeyRejectsUnknownAccount() {
-        TransactionRepository repository = new TransactionRepository(connection);
+        TransactionRepository repository = new SqliteTransactionRepository(connection);
         Transaction bad = new Transaction(
                 0, TransactionType.EXPENSE, "KBANK", 1, null, 100, "x", DAY, NOW);
-        assertThrows(SQLException.class, () -> repository.insert(bad));
+        assertThrows(StorageException.class, () -> repository.insert(bad));
     }
 }

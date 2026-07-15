@@ -8,7 +8,8 @@ import com.budgetguardian.model.DebtPayment;
 import com.budgetguardian.model.DebtStatus;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteDebtRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -28,8 +29,8 @@ class DebtRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void insertAssignsIdAndRoundTrips() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void insertAssignsIdAndRoundTrips() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt saved = repository.insert(openDebt(DAY.plusDays(30)));
         assertTrue(saved.id() > 0);
         HashMap<Long, Debt> debts = repository.findAll();
@@ -38,15 +39,15 @@ class DebtRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void nullDueDateRoundTrips() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void nullDueDateRoundTrips() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt saved = repository.insert(openDebt(null));
         assertNull(repository.findAll().get(saved.id()).dueDate());
     }
 
     @Test
-    void statusFlipPersists() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void statusFlipPersists() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt saved = repository.insert(openDebt(null));
         repository.updateStatus(saved.settled(DAY));
         Debt loaded = repository.findAll().get(saved.id());
@@ -57,8 +58,8 @@ class DebtRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void paymentsRoundTripChronologically() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void paymentsRoundTripChronologically() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt debt = repository.insert(openDebt(null));
         DebtPayment second = repository.insertPayment(
                 new DebtPayment(0, debt.id(), "SCB", 40_000, DAY.plusDays(5), NOW));
@@ -71,19 +72,19 @@ class DebtRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void deletePaymentRemovesRow() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void deletePaymentRemovesRow() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt debt = repository.insert(openDebt(null));
         DebtPayment payment = repository.insertPayment(
                 new DebtPayment(0, debt.id(), "SCB", 40_000, DAY, NOW));
         repository.deletePayment(payment.id());
         assertTrue(repository.findAllPayments().isEmpty());
-        assertThrows(SQLException.class, () -> repository.deletePayment(payment.id()));
+        assertThrows(StorageException.class, () -> repository.deletePayment(payment.id()));
     }
 
     @Test
-    void deletingDebtCascadesToPayments() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void deletingDebtCascadesToPayments() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt debt = repository.insert(openDebt(null));
         repository.insertPayment(new DebtPayment(0, debt.id(), "SCB", 40_000, DAY, NOW));
         repository.delete(debt.id());
@@ -92,12 +93,12 @@ class DebtRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void paymentForUnknownDebtOrAccountRejected() throws SQLException {
-        DebtRepository repository = new DebtRepository(connection);
+    void paymentForUnknownDebtOrAccountRejected() throws Exception {
+        DebtRepository repository = new SqliteDebtRepository(connection);
         Debt debt = repository.insert(openDebt(null));
-        assertThrows(SQLException.class, () -> repository.insertPayment(
+        assertThrows(StorageException.class, () -> repository.insertPayment(
                 new DebtPayment(0, 999, "SCB", 100, DAY, NOW)));
-        assertThrows(SQLException.class, () -> repository.insertPayment(
+        assertThrows(StorageException.class, () -> repository.insertPayment(
                 new DebtPayment(0, debt.id(), "KBANK", 100, DAY, NOW)));
     }
 }

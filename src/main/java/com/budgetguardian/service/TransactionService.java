@@ -7,7 +7,7 @@ import com.budgetguardian.repository.AccountRepository;
 import com.budgetguardian.repository.TransactionRepository;
 import com.budgetguardian.repository.TransactionRunner;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 
 /**
  * Business logic for expenses, income and withdrawals.
@@ -56,7 +56,7 @@ public final class TransactionService {
                 accounts.updateBalance(preview.id(), preview.balanceSatang());
                 return inserted;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save transaction", e);
         }
         store.ledger().addLast(saved);
@@ -82,7 +82,7 @@ public final class TransactionService {
                 accounts.updateBalance(preview.id(), preview.balanceSatang());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to delete transaction", e);
         }
         removeFromMemory(txn);
@@ -105,7 +105,7 @@ public final class TransactionService {
                 persistSwapBalances(before, edited);
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to edit transaction", e);
         }
         swapInMemory(before, edited);
@@ -125,7 +125,7 @@ public final class TransactionService {
                 accounts.updateBalance(preview.id(), preview.balanceSatang());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         removeFromMemory(txn);
@@ -141,7 +141,7 @@ public final class TransactionService {
                 accounts.updateBalance(preview.id(), preview.balanceSatang());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         store.ledger().addLast(txn);
@@ -159,7 +159,7 @@ public final class TransactionService {
                 persistSwapBalances(after, before);
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         swapInMemory(after, before);
@@ -209,7 +209,7 @@ public final class TransactionService {
      * same-account case with one combined write — two independent previews
      * would each miss the other's delta.
      */
-    private void persistSwapBalances(Transaction remove, Transaction apply) throws SQLException {
+    private void persistSwapBalances(Transaction remove, Transaction apply) throws StorageException {
         if (remove.accountId().equals(apply.accountId())) {
             long balance = store.accounts().get(remove.accountId()).balanceSatang()
                     - signedEffect(remove) + signedEffect(apply);

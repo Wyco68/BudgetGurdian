@@ -16,7 +16,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
-import java.sql.SQLException;
+import com.budgetguardian.repository.sqlite.SqliteAccountRepository;
+import com.budgetguardian.repository.sqlite.SqliteCategoryRepository;
+import com.budgetguardian.repository.sqlite.SqliteDebtRepository;
+import com.budgetguardian.repository.sqlite.SqliteRefillRepository;
+import com.budgetguardian.repository.sqlite.SqliteSettingsRepository;
+import com.budgetguardian.repository.sqlite.SqliteTransactionRepository;
+import com.budgetguardian.repository.sqlite.SqliteTransactionRunner;
+import com.budgetguardian.repository.sqlite.SqliteTransferRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -50,18 +57,18 @@ abstract class ServiceTestBase {
     StartupLoader loader;
 
     @BeforeEach
-    void wireStack() throws SQLException {
+    void wireStack() throws Exception {
         db = new DatabaseManager(tempDir.resolve("service-test.db"));
         db.open();
         var connection = db.getConnection();
-        TransactionRunner runner = new TransactionRunner(connection);
-        accountRepository = new AccountRepository(connection);
-        CategoryRepository categoryRepository = new CategoryRepository(connection);
-        transactionRepository = new TransactionRepository(connection);
-        TransferRepository transferRepository = new TransferRepository(connection);
-        DebtRepository debtRepository = new DebtRepository(connection);
-        RefillRepository refillRepository = new RefillRepository(connection);
-        SettingsRepository settingsRepository = new SettingsRepository(connection);
+        TransactionRunner runner = new SqliteTransactionRunner(connection);
+        accountRepository = new SqliteAccountRepository(connection);
+        CategoryRepository categoryRepository = new SqliteCategoryRepository(connection);
+        transactionRepository = new SqliteTransactionRepository(connection);
+        TransferRepository transferRepository = new SqliteTransferRepository(connection);
+        DebtRepository debtRepository = new SqliteDebtRepository(connection);
+        RefillRepository refillRepository = new SqliteRefillRepository(connection);
+        SettingsRepository settingsRepository = new SqliteSettingsRepository(connection);
 
         loader = new StartupLoader(accountRepository, categoryRepository, transactionRepository,
                 transferRepository, debtRepository, refillRepository, settingsRepository);
@@ -77,7 +84,7 @@ abstract class ServiceTestBase {
     }
 
     @AfterEach
-    void closeDb() throws SQLException {
+    void closeDb() throws Exception {
         db.close();
     }
 

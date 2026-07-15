@@ -4,7 +4,8 @@ import com.budgetguardian.datastructures.DoublyLinkedList;
 import com.budgetguardian.model.Transfer;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteTransferRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -19,8 +20,8 @@ class TransferRepositoryTest extends RepositoryTestBase {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 6, 12, 0);
 
     @Test
-    void insertAssignsIdAndRoundTrips() throws SQLException {
-        TransferRepository repository = new TransferRepository(connection);
+    void insertAssignsIdAndRoundTrips() throws Exception {
+        TransferRepository repository = new SqliteTransferRepository(connection);
         Transfer saved = repository.insert(
                 new Transfer(0, "SCB", "SAVING", 50_000, "ATM withdrawal", DAY, NOW));
         assertTrue(saved.id() > 0);
@@ -30,8 +31,8 @@ class TransferRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void findAllIsChronological() throws SQLException {
-        TransferRepository repository = new TransferRepository(connection);
+    void findAllIsChronological() throws Exception {
+        TransferRepository repository = new SqliteTransferRepository(connection);
         Transfer later = repository.insert(
                 new Transfer(0, "SCB", "SAVING", 100, "b", DAY.plusDays(2), NOW));
         Transfer earlier = repository.insert(
@@ -42,23 +43,23 @@ class TransferRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void deleteRemovesRow() throws SQLException {
-        TransferRepository repository = new TransferRepository(connection);
+    void deleteRemovesRow() throws Exception {
+        TransferRepository repository = new SqliteTransferRepository(connection);
         Transfer saved = repository.insert(
                 new Transfer(0, "SCB", "SAVING", 50_000, "atm", DAY, NOW));
         repository.delete(saved.id());
         assertTrue(repository.findAll().isEmpty());
-        assertThrows(SQLException.class, () -> repository.delete(saved.id()));
+        assertThrows(StorageException.class, () -> repository.delete(saved.id()));
     }
 
     @Test
     void schemaRejectsSelfTransferAndUnknownAccount() {
-        TransferRepository repository = new TransferRepository(connection);
+        TransferRepository repository = new SqliteTransferRepository(connection);
         // Self-transfer blocked by the record guard before SQL is reached.
         assertThrows(IllegalArgumentException.class,
                 () -> new Transfer(0, "SCB", "SCB", 100, "loop", DAY, NOW));
         // Unknown account blocked by the foreign key.
-        assertThrows(SQLException.class, () -> repository.insert(
+        assertThrows(StorageException.class, () -> repository.insert(
                 new Transfer(0, "SCB", "KBANK", 100, "ghost", DAY, NOW)));
     }
 }

@@ -8,7 +8,7 @@ import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.repository.RefillRepository;
 import com.budgetguardian.repository.TransactionRunner;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
@@ -100,7 +100,7 @@ public final class RefillService {
                 refills.upsert(item);
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save refill item", e);
         }
         store.refillItems().put(item.name(), item);
@@ -129,7 +129,7 @@ public final class RefillService {
                 refills.delete(item.name());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         store.refillItems().remove(item.name());
@@ -147,7 +147,7 @@ public final class RefillService {
                 refills.upsert(updated);
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to update refill item", e);
         }
         store.refillItems().put(updated.name(), updated);

@@ -4,7 +4,8 @@ import com.budgetguardian.datastructures.HashMap;
 import com.budgetguardian.model.Account;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
+import com.budgetguardian.repository.sqlite.SqliteAccountRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AccountRepositoryTest extends RepositoryTestBase {
 
     @Test
-    void findAllReturnsFourSeededAccounts() throws SQLException {
-        HashMap<String, Account> accounts = new AccountRepository(connection).findAll();
+    void findAllReturnsFourSeededAccounts() throws Exception {
+        HashMap<String, Account> accounts = new SqliteAccountRepository(connection).findAll();
         assertEquals(4, accounts.size());
         for (String id : new String[] {"SAVING", "SCHOLARSHIP", "SCB", "TRUEMONEY"}) {
             assertTrue(accounts.containsKey(id), "missing account: " + id);
@@ -26,15 +27,15 @@ class AccountRepositoryTest extends RepositoryTestBase {
     }
 
     @Test
-    void updateBalancePersists() throws SQLException {
-        AccountRepository repository = new AccountRepository(connection);
+    void updateBalancePersists() throws Exception {
+        AccountRepository repository = new SqliteAccountRepository(connection);
         repository.updateBalance("SCB", 123_456);
         assertEquals(123_456, repository.findAll().get("SCB").balanceSatang());
     }
 
     @Test
     void updateBalanceUnknownAccountThrows() {
-        AccountRepository repository = new AccountRepository(connection);
-        assertThrows(SQLException.class, () -> repository.updateBalance("KBANK", 1));
+        AccountRepository repository = new SqliteAccountRepository(connection);
+        assertThrows(StorageException.class, () -> repository.updateBalance("KBANK", 1));
     }
 }

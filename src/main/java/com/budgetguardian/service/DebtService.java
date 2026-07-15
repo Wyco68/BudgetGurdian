@@ -11,7 +11,7 @@ import com.budgetguardian.repository.AccountRepository;
 import com.budgetguardian.repository.DebtRepository;
 import com.budgetguardian.repository.TransactionRunner;
 
-import java.sql.SQLException;
+import com.budgetguardian.repository.StorageException;
 import java.time.LocalDate;
 
 /**
@@ -55,7 +55,7 @@ public final class DebtService {
         Debt saved;
         try {
             saved = runner.run(() -> debts.insert(debt));
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save debt", e);
         }
         store.debts().put(saved.id(), saved);
@@ -105,7 +105,7 @@ public final class DebtService {
                 }
                 return inserted;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Failed to save payment", e);
         }
         store.debtPayments().get(debtId).addLast(saved);
@@ -155,7 +155,7 @@ public final class DebtService {
                 debts.delete(debt.id());
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         store.debts().remove(debt.id());
@@ -181,7 +181,7 @@ public final class DebtService {
                 }
                 return null;
             });
-        } catch (SQLException e) {
+        } catch (StorageException e) {
             throw new BudgetException("Undo failed", e);
         }
         store.debtPayments().get(payment.debtId()).remove(payment);

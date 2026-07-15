@@ -1,13 +1,7 @@
 package com.budgetguardian.service;
 
-import com.budgetguardian.repository.AccountRepository;
-import com.budgetguardian.repository.CategoryRepository;
-import com.budgetguardian.repository.DebtRepository;
-import com.budgetguardian.repository.RefillRepository;
-import com.budgetguardian.repository.SettingsRepository;
-import com.budgetguardian.repository.TransactionRepository;
-import com.budgetguardian.repository.TransactionRunner;
-import com.budgetguardian.repository.TransferRepository;
+import com.budgetguardian.repository.Repositories;
+import com.budgetguardian.repository.sqlite.SqliteRepositories;
 
 import java.sql.Connection;
 import java.time.LocalDate;
@@ -16,11 +10,12 @@ import java.util.function.Supplier;
 /**
  * Composition root for the whole service layer.
  *
- * <p><b>Purpose:</b> builds every repository, hydrates the {@link DataStore}
+ * <p><b>Purpose:</b> takes a ready {@link Repositories} bundle (SQLite or
+ * REST — the services never know which), hydrates the {@link DataStore}
  * via {@link StartupLoader}, and wires all services, the {@link EventBus},
  * the {@link NotificationService} and the {@link RuleEngine} into one ready
- * object graph. {@code Main} constructs one of these after opening the
- * database; controllers pull the services they need from it. Keeping the
+ * object graph. {@code Main} constructs one of these after choosing the
+ * storage mode; controllers pull the services they need from it. Keeping the
  * wiring here (not in {@code Main}) makes the full stack constructible in
  * tests too.</p>
  *
@@ -42,26 +37,22 @@ public final class ServiceContext {
     private final NotificationService notificationService;
     private final RuleEngine ruleEngine;
 
+    /** Convenience constructor for the SQLite mode (and existing tests). */
     public ServiceContext(Connection connection, Supplier<LocalDate> today) {
-        TransactionRunner runner = new TransactionRunner(connection);
-        AccountRepository accountRepository = new AccountRepository(connection);
-        CategoryRepository categoryRepository = new CategoryRepository(connection);
-        TransactionRepository transactionRepository = new TransactionRepository(connection);
-        TransferRepository transferRepository = new TransferRepository(connection);
-        DebtRepository debtRepository = new DebtRepository(connection);
-        RefillRepository refillRepository = new RefillRepository(connection);
-        SettingsRepository settingsRepository = new SettingsRepository(connection);
+        this(SqliteRepositories.create(connection), today);
+    }
 
-        StartupLoader loader = new StartupLoader(accountRepository, categoryRepository,
-                transactionRepository, transferRepository, debtRepository, refillRepository,
-                settingsRepository);
+    public ServiceContext(Repositories repos, Supplier<LocalDate> today) {
+        StartupLoader loader = new StartupLoader(repos.accounts(), repos.categories(),
+                repos.transactions(), repos.transfers(), repos.debts(), repos.refills(),
+                repos.settings());
         this.store = loader.load();
         this.bus = new EventBus();
-        this.transactionService = new TransactionService(store, bus, runner, transactionRepository, accountRepository);
-        this.transferService = new TransferService(store, bus, runner, transferRepository, accountRepository);
-        this.debtService = new DebtService(store, bus, runner, debtRepository, accountRepository);
-        this.refillService = new RefillService(store, bus, runner, refillRepository);
-        this.settingsService = new SettingsService(store, bus, settingsRepository);
+        this.transactionService = new TransactionService(store, bus, repos.runner(), repos.transactions(), repos.accounts());
+        this.transferService = new TransferService(store, bus, repos.runner(), repos.transfers(), repos.accounts());
+        this.debtService = new DebtService(store, bus, repos.runner(), repos.debts(), repos.accounts());
+        this.refillService = new RefillService(store, bus, repos.runner(), repos.refills());
+        this.settingsService = new SettingsService(store, bus, repos.settings());
         this.searchService = new SearchService(store);
         this.reportService = new ReportService(store);
         this.undoService = new UndoService(store, transactionService, transferService, debtService, refillService);
