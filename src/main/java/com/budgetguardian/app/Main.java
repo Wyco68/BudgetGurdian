@@ -1,6 +1,11 @@
 package com.budgetguardian.app;
 
 import com.budgetguardian.database.DatabaseManager;
+import com.budgetguardian.network.HttpJsonClient;
+import com.budgetguardian.repository.Repositories;
+import com.budgetguardian.repository.api.ApiRepositories;
+import com.budgetguardian.repository.sqlite.SqliteRepositories;
+import com.budgetguardian.service.BudgetException;
 import com.budgetguardian.service.ReminderScheduler;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
@@ -17,6 +22,7 @@ import com.budgetguardian.view.TransfersView;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -33,15 +39,18 @@ import java.util.concurrent.TimeUnit;
 /**
  * Application entry point and composition root.
  *
- * <p><b>Startup:</b> open the SQLite database (creating/seeding on first run),
- * build the {@link ServiceContext} (which hydrates the in-memory store and
- * wires every service, the rule engine and notifications), construct the UI
- * shell with its views, and start the daemon {@link ReminderScheduler} that
- * marshals its work onto the JavaFX thread via {@link Platform#runLater}.</p>
+ * <p><b>Startup:</b> read {@link AppConfig}, build the {@link Repositories}
+ * bundle for the configured storage mode — a local SQLite file (default) or
+ * the REST backend — then construct the {@link ServiceContext} (which
+ * downloads/hydrates all data into the in-memory store and wires every
+ * service, the rule engine and notifications), build the UI shell, and start
+ * the daemon {@link ReminderScheduler} that marshals its work onto the
+ * JavaFX thread via {@link Platform#runLater}.</p>
  *
- * <p>The database lives at a stable per-user location (see
- * {@link #databaseFile()}) so every launch — from Maven or the packaged
- * executable — shares the same data.</p>
+ * <p>In API mode the desktop never opens a database connection and holds no
+ * database credentials; every read and write goes through the repository
+ * layer's HTTP client. A backend outage at startup produces a friendly
+ * dialog instead of a stack trace.</p>
  */
 public final class Main extends Application {
 
@@ -49,10 +58,16 @@ public final class Main extends Application {
     private ScheduledExecutorService scheduler;
 
     @Override
-    public void start(Stage stage) throws SQLException {
-        database = new DatabaseManager(databaseFile());
-        database.open();
-        ServiceContext services = new ServiceContext(database.getConnection(), LocalDate::now);
+    public void start(Stage stage) {
+        AppConfig config = AppConfig.load();
+        ServiceContext services;
+        try {
+            services = new ServiceContext(buildRepositories(config), LocalDate::now);
+        } catch (BudgetException | SQLException e) {
+            showStartupError(config, e);
+            Platform.exit();
+            return;
+        }
 
         AppShell shell = new AppShell(services);
         shell.register(new DashboardView(services, LocalDate::now));
@@ -79,50 +94,57 @@ public final class Main extends Application {
     }
 
     /**
-     * Resolves the database to a single stable per-user location, independent
-     * of the working directory the app was launched from.
-     *
-     * <p>A relative {@code "budget.db"} resolves against the current working
-     * directory, which differs between launch methods (running from Maven vs.
-     * double-clicking the packaged executable) — that would silently create a
-     * separate database per launch context. Anchoring it under the OS
-     * per-user data directory guarantees every launch opens the same file.</p>
-     *
-     * <ul>
-     *   <li>Windows: {@code %LOCALAPPDATA%\BudgetGuardian\budget.db}</li>
-     *   <li>macOS: {@code ~/Library/Application Support/BudgetGuardian/budget.db}</li>
-     *   <li>Linux/other: {@code ~/.budgetguardian/budget.db}</li>
-     * </ul>
-     *
-     * <p>A legacy {@code budget.db} in the working directory is migrated to the
-     * new location on first run so existing data is not lost.</p>
+     * Builds the repository bundle for the configured storage mode. Local
+     * mode opens (and owns) the SQLite database; API mode builds one shared
+     * HTTP client — no database connection ever exists on the desktop.
      */
-    private static Path databaseFile() {
-        Path dir = userDataDir();
-        try {
-            java.nio.file.Files.createDirectories(dir);
-        } catch (java.io.IOException e) {
-            throw new IllegalStateException("Cannot create data directory: " + dir, e);
+    private Repositories buildRepositories(AppConfig config) throws SQLException {
+        if (config.mode() == AppConfig.StorageMode.API) {
+            HttpJsonClient http = new HttpJsonClient(
+                    config.apiBaseUrl(),
+                    config.connectTimeout(),
+                    config.requestTimeout(),
+                    config.retries(),
+                    config.apiKey());
+            return ApiRepositories.create(http);
         }
-        Path target = dir.resolve("budget.db");
-        migrateLegacyDatabase(target);
-        return target;
+        database = new DatabaseManager(databaseFile());
+        database.open();
+        return SqliteRepositories.create(database.getConnection());
     }
 
-    private static Path userDataDir() {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        String home = System.getProperty("user.home", ".");
-        if (os.contains("win")) {
-            String localAppData = System.getenv("LOCALAPPDATA");
-            Path base = (localAppData != null && !localAppData.isBlank())
-                    ? Path.of(localAppData)
-                    : Path.of(home, "AppData", "Local");
-            return base.resolve("BudgetGuardian");
+    /** Friendly startup failure: says what failed and how to fix it. */
+    private static void showStartupError(AppConfig config, Exception e) {
+        String hint = config.mode() == AppConfig.StorageMode.API
+                ? "The backend at " + config.apiBaseUrl() + " could not be reached.\n"
+                        + "Start the backend (or switch storage.mode back to 'local' in\n"
+                        + AppConfig.userDataDir().resolve("config.properties") + ") and try again."
+                : "The local database could not be opened.";
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Budget Guardian — cannot start");
+        alert.setHeaderText("Failed to load your data");
+        alert.setContentText(hint + "\n\nDetails: " + rootMessage(e));
+        alert.showAndWait();
+    }
+
+    private static String rootMessage(Throwable t) {
+        Throwable cause = t;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
         }
-        if (os.contains("mac")) {
-            return Path.of(home, "Library", "Application Support", "BudgetGuardian");
-        }
-        return Path.of(home, ".budgetguardian");
+        return cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+    }
+
+    /**
+     * Resolves the database to a single stable per-user location, independent
+     * of the working directory the app was launched from (running from Maven
+     * vs. double-clicking the packaged executable must share one file).
+     * A legacy {@code budget.db} in the working directory is migrated once.
+     */
+    private static Path databaseFile() {
+        Path target = AppConfig.userDataDir().resolve("budget.db");
+        migrateLegacyDatabase(target);
+        return target;
     }
 
     /** Copies a working-directory {@code budget.db} to the stable path once, if present. */
