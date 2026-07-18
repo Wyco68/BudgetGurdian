@@ -67,7 +67,9 @@ real application.
 | Language | Java 21 |
 | Build | Maven |
 | GUI | JavaFX 21 (dark, Material-inspired theme, no FXML — code-built views) |
-| Persistence | SQLite via JDBC (`sqlite-jdbc`) |
+| Persistence | Pluggable: SQLite via JDBC (`sqlite-jdbc`, local mode) **or** REST backend (api mode) |
+| Backend (api mode) | Node.js + Express 5 + Prisma → Supabase PostgreSQL (`backend/`) |
+| HTTP / JSON (api mode) | `java.net.http.HttpClient` + Gson |
 | Testing | JUnit 5 |
 | Documentation | Javadoc on every public type and method |
 | Packaging | `jpackage` (native installer) + Maven Shade (fat jar) |
@@ -76,14 +78,15 @@ real application.
 
 ## Architecture
 
-Strict one-directional layering. The UI never touches SQLite, and SQLite is
+Strict one-directional layering. The UI never touches storage, and storage is
 never queried at runtime after startup — it exists purely for persistence.
 
 ```
-SQLite (persistence only)
+Storage (persistence only): SQLite file  ─or─  REST backend → Prisma → Supabase PostgreSQL
         │  hydrated once at startup (StartupLoader)
         ▼
-Repository layer            (JDBC, PreparedStatements, java.sql only)
+Repository interfaces        (repository/sqlite = JDBC, repository/api = HTTP+JSON;
+                              selected once at startup via config.properties)
         │  returns/accepts custom structures exclusively
         ▼
 Custom Data Structures       (DynamicArray, DoublyLinkedList, HashMap,
@@ -104,12 +107,31 @@ JavaFX UI                    (controllers/views read DataStore, call
 refill confirmation, ...):
 
 1. Validate input in the service.
-2. Write to SQLite inside one transaction (`TransactionRunner`) — DB-first,
-   so a mid-operation crash never leaves memory ahead of disk.
+2. Persist via the repository interfaces (`TransactionRunner`) — storage-first,
+   so a mid-operation crash or a failed remote save never leaves memory ahead
+   of what was persisted. In local mode this is one SQLite transaction; in api
+   mode each REST endpoint is atomic server-side.
 3. Mutate the in-memory `DataStore` structures.
 4. Push the inverse `Action` onto the undo `Stack`.
 5. Re-run the rule engine (danger spending / budget / debt / refill checks).
 6. Publish an `EventType` on the `EventBus` — subscribed views refresh.
+
+### Cloud persistence (api mode)
+
+The desktop can persist through a REST backend instead of the local SQLite
+file — same services, same data structures, same algorithms; only the
+repository implementation changes. The desktop never connects to PostgreSQL
+and never holds database credentials.
+
+```
+Java Desktop → Repository layer → HTTP REST API → Node.js (Express) → Prisma → Supabase PostgreSQL
+```
+
+- Switch modes in `config.properties` (`storage.mode=local|api`) — see
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- Endpoint reference: [docs/API.md](docs/API.md).
+- Sequence diagrams, error handling, consistency model, ADRs:
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### JavaFX collection interop (the one documented exception)
 
@@ -204,7 +226,12 @@ src/main/java/com/budgetguardian/
 ├── app/              Main (JavaFX Application) + Launcher (fat-jar entry point)
 ├── controller/        (reserved — current UI logic lives in view/ controllers-as-views)
 ├── model/             Immutable domain records: Account, Transaction, Transfer, Debt, ...
-├── repository/        JDBC-only data access, one repository per aggregate
+├── repository/        Storage-neutral interfaces + Repositories bundle + StorageException
+│   ├── sqlite/          JDBC implementations (local mode)
+│   └── api/             REST implementations (api mode)
+├── dto/               Plain wire carriers for the REST backend (Gson-friendly)
+├── mapper/            DTO ↔ domain-record conversion (the only place they meet)
+├── network/           HttpJsonClient — timeouts, idempotent-only retry, X-API-Key
 ├── service/           Business logic, DataStore, EventBus, undo, rules, notifications
 ├── view/              JavaFX views, dialogs, and the AppShell (code-built, no FXML)
 ├── datastructures/    DynamicArray, DoublyLinkedList, HashMap, Stack, Queue,
@@ -217,7 +244,14 @@ src/main/java/com/budgetguardian/
 
 src/main/resources/
 ├── css/styles.css      Dark Material-inspired theme
-└── db/schema.sql       Idempotent SQLite schema + seed data
+├── db/schema.sql       Idempotent SQLite schema + seed data
+└── config.properties   Annotated config template (copied to the user dir on first run)
+
+backend/                Node.js REST backend (api mode)
+├── prisma/             schema.prisma, migrations/, seed.js
+└── src/                routes → zod validation → controllers → services (Prisma)
+
+docs/                   ARCHITECTURE.md (diagrams + ADRs), API.md, DEPLOYMENT.md
 
 src/test/java/com/budgetguardian/
 ├── datastructures/     Structure-by-structure exhaustive test suites
@@ -243,9 +277,24 @@ src/test/java/com/budgetguardian/
 mvn clean javafx:run
 ```
 
-On first run, `budget.db` is created next to the application and seeded with
-four accounts, eleven categories, and default settings (180 THB daily
-budget, 200 THB danger weekly limit, 20:00 reminder time).
+On first run, `budget.db` is created in the per-user data directory and
+seeded with four accounts, eleven categories, and default settings (180 THB
+daily budget, 200 THB danger weekly limit, 20:00 reminder time). An
+annotated `config.properties` is created next to it.
+
+### Run against the cloud (api mode)
+
+```bash
+# 1. one-time backend setup — see docs/DEPLOYMENT.md for Supabase details
+cd backend && npm install && cp .env.example .env   # fill in the database URLs
+npm run db:migrate && npm run db:seed && npm run dev
+
+# 2. point the desktop at it: edit config.properties in the user data dir
+#    storage.mode=api
+#    api.baseUrl=http://localhost:8080/api/v1
+
+mvn clean javafx:run
+```
 
 ### Keyboard Shortcuts
 
@@ -263,7 +312,7 @@ budget, 200 THB danger weekly limit, 20:00 reminder time).
 mvn test
 ```
 
-231 JUnit 5 tests, organized by layer:
+259 JUnit 5 tests, organized by layer:
 
 - **Data structures** — exhaustive per-structure suites: empty/single/many,
   resize/rehash boundaries, iterator order (forward + reverse), fail-fast
@@ -275,8 +324,14 @@ mvn test
 - **Services** — business rules, undo round-trips (add → undo → identical
   state), transfer atomicity, debt partial-payment auto-settle + undo
   reopen, refill detection logic, danger-week Mon→Sun boundary.
+- **REST layer** — DTO↔model mapper round-trips, `HttpJsonClient` behavior
+  (error shapes, API key, idempotent-only retry) against a stub HTTP server,
+  and the api-mode repositories hydrating the custom structures.
 - **Integration** — a realistic multi-step session driven through the full
-  object graph, plus an **architecture-guard test** that scans the source
+  object graph; an end-to-end **synchronization test** running the real
+  service layer over the REST repositories (startup hydration, remote-first
+  writes, undo with original-id restore, memory-intact-on-failure, restart
+  consistency); plus an **architecture-guard test** that scans the source
   tree and fails the build if any business-logic file imports a forbidden
   `java.util` collection.
 
@@ -307,7 +362,8 @@ Installers are written to `target/installer/`.
 
 | Pattern | Where |
 |---|---|
-| **Repository** | One repository class per aggregate, JDBC-only |
+| **Repository** | Interface per aggregate; interchangeable SQLite (JDBC) and REST implementations |
+| **DTO + Mapper** | `dto/` wire carriers, `mapper/` conversions — the UI never sees a DTO, the wire never sees a domain record |
 | **Service Layer** | All business logic, validation, and orchestration |
 | **MVC** (adapted) | `view/` = controller + view combined; `model/` = domain records; `service/` = the rest of "controller" logic |
 | **Observer** | `EventBus` — services publish, views subscribe, zero direct coupling |
@@ -329,8 +385,13 @@ Installers are written to `target/installer/`.
   stores nothing, so the next repeat purchase asks again — only "Yes" persists.
 - **Danger week = calendar Monday–Sunday**, not a rolling 7 days — cheaper
   to compute, easier to reason about.
-- **DB-first writes.** Every mutation persists to SQLite before touching
-  in-memory state, so a crash mid-write never desyncs memory from disk.
+- **Storage-first writes.** Every mutation persists (SQLite transaction or
+  REST call) before touching in-memory state, so a crash or a failed remote
+  save never desyncs memory from what was actually stored.
+- **The desktop never sees the database.** In api mode all persistence goes
+  through the Node backend; Supabase credentials exist only in
+  `backend/.env`. Numeric ids were kept over UUIDs to leave the domain
+  records untouched — see ADR-2 in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
