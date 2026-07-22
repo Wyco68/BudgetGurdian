@@ -19,9 +19,11 @@ import com.budgetguardian.view.SearchView;
 import com.budgetguardian.view.SettingsView;
 import com.budgetguardian.view.TransactionsView;
 import com.budgetguardian.view.TransfersView;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.util.Duration;
 import javafx.scene.control.Alert;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -45,21 +47,27 @@ import java.util.concurrent.TimeUnit;
  * downloads/hydrates all data into the in-memory store and wires every
  * service, the rule engine and notifications), build the UI shell, and start
  * the daemon {@link ReminderScheduler} that marshals its work onto the
- * JavaFX thread via {@link Platform#runLater}.</p>
+ * JavaFX thread via {@link Platform#runLater} and additionally raises the
+ * daily reminder as an OS-level notification via {@link OsNotifier}.</p>
  *
  * <p>In API mode the desktop never opens a database connection and holds no
  * database credentials; every read and write goes through the repository
- * layer's HTTP client. A backend outage at startup produces a friendly
- * dialog instead of a stack trace.</p>
+ * layer's HTTP client. If a loopback backend isn't already running,
+ * {@link BackendLauncher} starts it and stops it again on exit; a backend
+ * that's remote, already running, or fails to come up in time falls through
+ * to a friendly dialog instead of a stack trace.</p>
  */
 public final class Main extends Application {
 
     private DatabaseManager database;
     private ScheduledExecutorService scheduler;
+    private final BackendLauncher backendLauncher = new BackendLauncher();
+    private OsNotifier osNotifier;
 
     @Override
     public void start(Stage stage) {
         AppConfig config = AppConfig.load();
+        backendLauncher.ensureRunning(config);
         ServiceContext services;
         try {
             services = new ServiceContext(buildRepositories(config), LocalDate::now);
@@ -91,6 +99,26 @@ public final class Main extends Application {
         stage.show();
 
         startReminderScheduler(services);
+        maybeSelfExitForSmokeTest();
+    }
+
+    /**
+     * CI boot-smoke hook: when {@code -Dbudgetguardian.smokeTest=true} is set,
+     * the app has reached a fully wired, shown window without throwing. Print a
+     * marker the pipeline greps for and exit cleanly after a short delay (long
+     * enough for one render pass), so the packaged application can be verified
+     * to launch headlessly without a human closing the window. No effect on a
+     * normal run.
+     */
+    private void maybeSelfExitForSmokeTest() {
+        if (!Boolean.getBoolean("budgetguardian.smokeTest")) {
+            return;
+        }
+        System.out.println("BUDGET_GUARDIAN_SMOKE_OK");
+        System.out.flush();
+        PauseTransition delay = new PauseTransition(Duration.seconds(2));
+        delay.setOnFinished(event -> Platform.exit());
+        delay.play();
     }
 
     /**
@@ -181,9 +209,11 @@ public final class Main extends Application {
     }
 
     private void startReminderScheduler(ServiceContext services) {
+        osNotifier = new OsNotifier();
         ReminderScheduler reminder = new ReminderScheduler(
                 services.store(), services.notifications(), services.settings(),
-                LocalDateTime::now, Platform::runLater);
+                LocalDateTime::now, Platform::runLater,
+                notification -> osNotifier.notify(notification.title(), notification.message()));
         scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "reminder-scheduler");
             thread.setDaemon(true);
@@ -200,6 +230,10 @@ public final class Main extends Application {
         if (database != null) {
             database.close();
         }
+        if (osNotifier != null) {
+            osNotifier.close();
+        }
+        backendLauncher.stop();
     }
 
     private static String styleSheet() {

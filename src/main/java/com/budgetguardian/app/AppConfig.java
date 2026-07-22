@@ -34,6 +34,8 @@ public final class AppConfig {
     private final Duration requestTimeout;
     private final int retries;
     private final String apiKey;
+    private final boolean autoStartBackend;
+    private final String backendDir;
 
     private AppConfig(Properties props) {
         this.mode = "api".equalsIgnoreCase(props.getProperty("storage.mode", "local"))
@@ -43,6 +45,8 @@ public final class AppConfig {
         this.requestTimeout = Duration.ofMillis(longProp(props, "api.requestTimeoutMs", 10000));
         this.retries = (int) longProp(props, "api.retries", 2);
         this.apiKey = props.getProperty("api.key", "").trim();
+        this.autoStartBackend = Boolean.parseBoolean(props.getProperty("api.autoStartBackend", "true"));
+        this.backendDir = props.getProperty("api.backendDir", "").trim();
     }
 
     /**
@@ -124,6 +128,16 @@ public final class AppConfig {
     /** @return the configured API key, or null when none is set */
     public String apiKey() {
         return apiKey.isEmpty() ? null : apiKey;
+    }
+
+    /** Whether the desktop should spawn the backend itself when it is unreachable at startup. */
+    public boolean autoStartBackend() {
+        return autoStartBackend;
+    }
+
+    /** @return the configured backend project directory, or null when none is set */
+    public String backendDir() {
+        return backendDir.isEmpty() ? null : backendDir;
     }
 
     private static void seedIfMissing(Path file) {

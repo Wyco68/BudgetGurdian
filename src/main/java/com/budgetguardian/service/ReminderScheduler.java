@@ -23,6 +23,12 @@ import java.util.function.Supplier;
  * if no expense is dated today, enqueue one daily reminder — and only one per
  * calendar day, tracked by {@code lastReminderDate}.</p>
  *
+ * <p><b>OS-level notification:</b> the same reminder is also handed to an
+ * {@code onOsNotify} callback, invoked directly on the caller's thread (not
+ * marshalled through {@code executor}) since it is a plain OS call, not a
+ * JavaFX toolkit access. Defaults to a no-op so tests and any caller that
+ * doesn't want a system notification are unaffected.</p>
+ *
  * <p><b>Time complexity:</b> each tick O(n) worst case scanning the ledger
  * tail for a today-dated expense (stops at the first hit).</p>
  */
@@ -33,17 +39,25 @@ public final class ReminderScheduler {
     private final SettingsService settings;
     private final Supplier<LocalDateTime> clock;
     private final Consumer<Runnable> executor;
+    private final Consumer<Notification> onOsNotify;
 
     private LocalDate lastReminderDate;
 
     public ReminderScheduler(DataStore store, NotificationService notifications,
                              SettingsService settings, Supplier<LocalDateTime> clock,
                              Consumer<Runnable> executor) {
+        this(store, notifications, settings, clock, executor, notification -> { });
+    }
+
+    public ReminderScheduler(DataStore store, NotificationService notifications,
+                             SettingsService settings, Supplier<LocalDateTime> clock,
+                             Consumer<Runnable> executor, Consumer<Notification> onOsNotify) {
         this.store = store;
         this.notifications = notifications;
         this.settings = settings;
         this.clock = clock;
         this.executor = executor;
+        this.onOsNotify = onOsNotify;
     }
 
     /**
@@ -63,11 +77,13 @@ public final class ReminderScheduler {
             return;                                        // nothing to remind about
         }
         lastReminderDate = day;
-        executor.accept(() -> notifications.enqueueReminder(new Notification(
+        Notification reminder = new Notification(
                 NotificationType.DAILY_REMINDER,
                 "🔔 Daily Reminder",
                 "Have you recorded today's expenses?",
-                now)));
+                now);
+        executor.accept(() -> notifications.enqueueReminder(reminder));
+        onOsNotify.accept(reminder);
     }
 
     private boolean hasExpenseOn(LocalDate day) {

@@ -75,4 +75,21 @@ class ReminderSchedulerTest extends ServiceTestBase {
         scheduler.tick();
         assertEquals(1, notifications.reminders().size());
     }
+
+    @Test
+    void osNotifyCallbackFiresOnceWithTheSameReminder() {
+        java.util.List<Notification> osNotified = new java.util.ArrayList<>();
+        clock = LocalDateTime.of(2026, 7, 6, 20, 0);
+        NotificationService osNotifications = new NotificationService(bus);
+        ReminderScheduler osScheduler = new ReminderScheduler(store, osNotifications, settingsService,
+                () -> clock, Runnable::run, osNotified::add);
+
+        osScheduler.tick();
+        clock = LocalDateTime.of(2026, 7, 6, 20, 1);
+        osScheduler.tick();
+
+        assertEquals(1, osNotified.size());
+        assertEquals(NotificationType.DAILY_REMINDER, osNotified.get(0).type());
+        assertEquals(osNotifications.reminders().peek(), osNotified.get(0));
+    }
 }
