@@ -77,6 +77,17 @@ CREATE TABLE IF NOT EXISTS setting (
     value TEXT NOT NULL
 );
 
+-- A recurring bill: optional payday (1-31) drives the "pay me" reminder.
+-- Paying one logs a normal Bill-category txn and bumps last_paid_date.
+CREATE TABLE IF NOT EXISTS bill (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL,
+    amount_satang   INTEGER NOT NULL CHECK (amount_satang > 0),
+    payday          INTEGER CHECK (payday IS NULL OR (payday BETWEEN 1 AND 31)),
+    last_paid_date  TEXT,
+    created_at      TEXT    NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_txn_date       ON txn (txn_date);
 CREATE INDEX IF NOT EXISTS idx_txn_category   ON txn (category_id);
 CREATE INDEX IF NOT EXISTS idx_txn_item       ON txn (item_name);
@@ -90,18 +101,29 @@ INSERT OR IGNORE INTO account (id, name, balance_satang, display_order) VALUES
     ('SCB',         'SCB',         0, 3),
     ('TRUEMONEY',   'TrueMoney',   0, 4);
 
+-- Six fixed categories. DailySpending is the only one counted against the
+-- daily budget limit; Alcohol/Gamble are "danger" (weekly limit); Bill and
+-- Alcohol both feed the separate weekly danger/bill chart.
 INSERT OR IGNORE INTO category (id, name, is_danger) VALUES
-    (1,  'Food',          0),
-    (2,  'Transport',     0),
-    (3,  'Shopping',      0),
-    (4,  'Bills',         0),
-    (5,  'Health',        0),
-    (6,  'Entertainment', 0),
-    (7,  'Education',     0),
-    (8,  'Investment',    0),
-    (9,  'Gift',          0),
+    (1,  'DailySpending', 0),
+    (2,  'Refill',        0),
+    (3,  'Extra',         0),
+    (4,  'Bill',          0),
     (10, 'Alcohol',       1),
-    (11, 'Gambling',      1);
+    (11, 'Gamble',        1);
+
+-- Idempotent migration for pre-existing databases seeded with the old
+-- 11-category set: rename the survivors in place, fold the rest into Extra.
+-- Each statement is a no-op once applied (name won't match again), and a
+-- no-op on a fresh install (seed above already inserted the new names).
+UPDATE category SET name = 'DailySpending' WHERE id = 1 AND name = 'Food';
+UPDATE category SET name = 'Refill'        WHERE id = 2 AND name = 'Transport';
+UPDATE category SET name = 'Bill', is_danger = 0
+    WHERE id = 4 AND name = 'Bills';
+UPDATE category SET name = 'Gamble'        WHERE id = 11 AND name = 'Gambling';
+UPDATE txn SET category_id = 3 WHERE category_id IN (5, 6, 7, 8, 9);
+UPDATE category SET name = 'Extra' WHERE id = 3 AND name = 'Shopping';
+DELETE FROM category WHERE id IN (5, 6, 7, 8, 9);
 
 INSERT OR IGNORE INTO setting (key, value) VALUES
     ('daily_budget',        '18000'),

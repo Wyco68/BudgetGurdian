@@ -56,7 +56,10 @@ model Account {
   @@map("account")
 }
 
-/// The eleven fixed spending categories (seeded; read-only through the API).
+/// The six fixed spending categories (seeded; read-only through the API).
+/// DailySpending is the only one counted against the daily budget limit;
+/// Alcohol/Gamble are "danger" (weekly limit); Alcohol and Bill both feed
+/// the separate weekly danger/bill chart.
 model Category {
   id       Int     @id
   name     String  @unique
@@ -154,4 +157,18 @@ model Setting {
   value String
 
   @@map("setting")
+}
+
+/// A recurring bill: optional payday (1-31) drives the "pay me" reminder.
+/// Paying one logs a normal Bill-category Transaction and bumps
+/// lastPaidDate — there is no separate payment ledger for bills.
+model Bill {
+  id            BigInt    @id @default(autoincrement())
+  name          String
+  amountSatang  BigInt    @map("amount_satang")
+  payday        Int?
+  lastPaidDate  DateTime? @map("last_paid_date") @db.Date
+  createdAt     DateTime  @map("created_at")
+
+  @@map("bill")
 }

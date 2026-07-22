@@ -203,9 +203,10 @@ class ApiSyncIntegrationTest {
                 return switch (path) {
                     case "/accounts" -> accountsJson();
                     case "/categories" ->
-                            "[{\"id\":1,\"name\":\"Food\",\"danger\":false},{\"id\":10,\"name\":\"Alcohol\",\"danger\":true}]";
+                            "[{\"id\":1,\"name\":\"DailySpending\",\"danger\":false},"
+                                    + "{\"id\":10,\"name\":\"Alcohol\",\"danger\":true}]";
                     case "/transactions" -> GSON.toJson(new ArrayList<>(transactions.values()));
-                    case "/transfers", "/debts", "/debt-payments", "/refill-items" -> "[]";
+                    case "/transfers", "/debts", "/debt-payments", "/refill-items", "/bills" -> "[]";
                     case "/settings" ->
                             "[{\"key\":\"daily_budget\",\"value\":\"18000\"},{\"key\":\"danger_weekly_limit\",\"value\":\"20000\"},{\"key\":\"reminder_time\",\"value\":\"20:00\"}]";
                     default -> null;

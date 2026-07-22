@@ -32,19 +32,19 @@ class DatabaseManagerTest {
             db.open();
             for (String table : new String[] {
                     "account", "category", "txn", "transfer",
-                    "debt", "debt_payment", "refill_item", "setting"}) {
+                    "debt", "debt_payment", "refill_item", "setting", "bill"}) {
                 assertTrue(tableExists(db.getConnection(), table), "missing table: " + table);
             }
         }
     }
 
     @Test
-    void seedsFourAccountsElevenCategoriesAndSettings() throws SQLException {
+    void seedsFourAccountsSixCategoriesAndSettings() throws SQLException {
         try (DatabaseManager db = new DatabaseManager(dbFile())) {
             db.open();
             Connection conn = db.getConnection();
             assertEquals(4, count(conn, "account"));
-            assertEquals(11, count(conn, "category"));
+            assertEquals(6, count(conn, "category"));
             assertEquals(2, scalar(conn, "SELECT COUNT(*) FROM category WHERE is_danger = 1"));
             assertEquals(3, count(conn, "setting"));
             assertEquals(18000, scalar(conn,
@@ -61,7 +61,7 @@ class DatabaseManagerTest {
         try (DatabaseManager db = new DatabaseManager(file)) {
             db.open();
             assertEquals(4, count(db.getConnection(), "account"));
-            assertEquals(11, count(db.getConnection(), "category"));
+            assertEquals(6, count(db.getConnection(), "category"));
         }
     }
 
