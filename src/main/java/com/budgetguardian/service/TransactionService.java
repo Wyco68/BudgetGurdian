@@ -1,6 +1,7 @@
 package com.budgetguardian.service;
 
 import com.budgetguardian.model.Account;
+import com.budgetguardian.model.Category;
 import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.repository.AccountRepository;
@@ -23,6 +24,9 @@ import com.budgetguardian.repository.StorageException;
  * delete/edit O(n) ledger scan by id + O(20) buffer rebuild.</p>
  */
 public final class TransactionService {
+
+    /** Name of the catch-all category that requires a reason on every expense. */
+    public static final String EXTRA_CATEGORY_NAME = "Extra";
 
     private final DataStore store;
     private final EventBus bus;
@@ -172,8 +176,14 @@ public final class TransactionService {
         if (!store.accounts().containsKey(txn.accountId())) {
             throw new BudgetException("Unknown account: " + txn.accountId());
         }
-        if (txn.type() == TransactionType.EXPENSE && !store.categories().containsKey(txn.categoryId())) {
-            throw new BudgetException("Unknown category: " + txn.categoryId());
+        if (txn.type() == TransactionType.EXPENSE) {
+            Category category = store.categories().get(txn.categoryId());
+            if (category == null) {
+                throw new BudgetException("Unknown category: " + txn.categoryId());
+            }
+            if (category.name().equals(EXTRA_CATEGORY_NAME) && txn.reason().isBlank()) {
+                throw new BudgetException("Extra expenses require a reason");
+            }
         }
     }
 

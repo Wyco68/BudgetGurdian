@@ -27,13 +27,22 @@ class ModelValidationTest {
     }
 
     @Test
-    void transactionRejectsNonPositiveAmountAndBlankReason() {
+    void transactionRejectsNonPositiveAmount() {
         assertThrows(IllegalArgumentException.class, () -> new Transaction(
                 0, TransactionType.EXPENSE, "SCB", 1, null, 0, "x", DAY, NOW));
         assertThrows(IllegalArgumentException.class, () -> new Transaction(
                 0, TransactionType.EXPENSE, "SCB", 1, null, -5, "x", DAY, NOW));
+    }
+
+    @Test
+    void transactionAllowsBlankReasonButNotNull() {
+        // Reason is optional at the model level — TransactionService enforces
+        // it for Extra-category expenses, since only it knows category names.
+        Transaction blank = new Transaction(
+                0, TransactionType.EXPENSE, "SCB", 1, null, 100, "  ", DAY, NOW);
+        assertEquals("  ", blank.reason());
         assertThrows(IllegalArgumentException.class, () -> new Transaction(
-                0, TransactionType.EXPENSE, "SCB", 1, null, 100, "  ", DAY, NOW));
+                0, TransactionType.EXPENSE, "SCB", 1, null, 100, null, DAY, NOW));
     }
 
     @Test

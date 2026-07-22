@@ -38,17 +38,21 @@ import java.time.LocalDate;
  * </ul>
  *
  * <p><b>Derived totals</b> (all satang, expenses only) keep dashboard reads
- * O(1): daily totals keyed {@code yyyy-MM-dd}, per-category month totals keyed
- * {@code categoryId:yyyy-MM}, danger-spending week totals keyed by the Monday
- * of the calendar week (Mon–Sun rule). {@link #applyToTotals} adds or removes
- * one transaction's contribution with {@code sign} ±1 — the single place the
- * three maps are maintained, used by add, delete, edit and undo alike.</p>
+ * O(1): daily totals (DailySpending category only) keyed {@code yyyy-MM-dd},
+ * per-category month totals keyed {@code categoryId:yyyy-MM}, danger-spending
+ * week totals keyed by the Monday of the calendar week (Mon–Sun rule).
+ * {@link #applyToTotals} adds or removes one transaction's contribution with
+ * {@code sign} ±1 — the single place the three maps are maintained, used by
+ * add, delete, edit and undo alike.</p>
  *
  * <p><b>Space complexity:</b> O(n) in total row count.
  * Not thread-safe by design: all mutation happens on the JavaFX application
  * thread; the scheduler thread hands work over via {@code Platform.runLater}.</p>
  */
 public final class DataStore {
+
+    /** Only expenses under this category count toward the daily budget limit. */
+    public static final String DAILY_SPENDING_CATEGORY = "DailySpending";
 
     private final DoublyLinkedList<Transaction> ledger = new DoublyLinkedList<>();
     private final DoublyLinkedList<Transfer> transfers = new DoublyLinkedList<>();
@@ -159,9 +163,11 @@ public final class DataStore {
             return;
         }
         long delta = sign * txn.amountSatang();
-        addTo(dailyTotals, dayKey(txn.date()), delta);
-        addTo(categoryMonthTotals, monthKey(txn.categoryId(), txn.date()), delta);
         Category category = categories.get(txn.categoryId());
+        if (category != null && category.name().equals(DAILY_SPENDING_CATEGORY)) {
+            addTo(dailyTotals, dayKey(txn.date()), delta);
+        }
+        addTo(categoryMonthTotals, monthKey(txn.categoryId(), txn.date()), delta);
         if (category != null && category.danger()) {
             addTo(dangerWeekTotals, weekKey(txn.date()), delta);
         }

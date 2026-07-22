@@ -17,7 +17,9 @@ import java.time.LocalDateTime;
  * @param categoryId   spending category; null for income/withdrawal
  * @param itemName     purchased item (drives refill detection); null when not applicable
  * @param amountSatang positive amount in satang
- * @param reason       user-entered reason, required
+ * @param reason       user-entered reason; never null, but blank unless the
+ *                     transaction is an Extra-category expense (enforced by
+ *                     {@code TransactionService}, which knows category names)
  * @param date         day the transaction happened
  * @param createdAt    timestamp the row was recorded
  */
@@ -42,8 +44,8 @@ public record Transaction(
         if (amountSatang <= 0) {
             throw new IllegalArgumentException("Amount must be positive, got " + amountSatang);
         }
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("Reason must not be blank");
+        if (reason == null) {
+            throw new IllegalArgumentException("Reason must not be null");
         }
         if (date == null || createdAt == null) {
             throw new IllegalArgumentException("Dates must not be null");

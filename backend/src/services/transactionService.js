@@ -3,6 +3,19 @@ import { ApiError } from '../utils/ApiError.js';
 import { parseDateOnly, parseNaiveDateTime } from '../utils/dates.js';
 import { toTransactionDto } from './mappers.js';
 
+/** Category whose expenses must carry a non-blank reason. */
+const EXTRA_CATEGORY_NAME = 'Extra';
+
+async function assertReasonForExtra(dto) {
+  if (dto.type !== 'EXPENSE' || dto.categoryId == null) {
+    return;
+  }
+  const category = await prisma.category.findUnique({ where: { id: dto.categoryId } });
+  if (category?.name === EXTRA_CATEGORY_NAME && !dto.reason?.trim()) {
+    throw ApiError.badRequest('Extra expenses require a reason');
+  }
+}
+
 function toRow(dto) {
   return {
     type: dto.type,
@@ -26,6 +39,7 @@ export async function listTransactions() {
 
 /** Inserts one transaction; the database generates the id. */
 export async function createTransaction(dto) {
+  await assertReasonForExtra(dto);
   const row = await prisma.transaction.create({ data: toRow(dto) });
   return toTransactionDto(row);
 }
@@ -39,6 +53,7 @@ export async function restoreTransaction(id, dto) {
   if (existing) {
     throw ApiError.conflict(`Transaction ${id} already exists`);
   }
+  await assertReasonForExtra(dto);
   const row = await prisma.transaction.create({
     data: { id: BigInt(id), ...toRow(dto) },
   });
@@ -47,6 +62,7 @@ export async function restoreTransaction(id, dto) {
 
 /** Rewrites all columns of an existing transaction (edit feature). */
 export async function updateTransaction(id, dto) {
+  await assertReasonForExtra(dto);
   const row = await prisma.transaction.update({
     where: { id: BigInt(id) },
     data: toRow(dto),

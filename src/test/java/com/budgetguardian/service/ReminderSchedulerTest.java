@@ -41,7 +41,7 @@ class ReminderSchedulerTest extends ServiceTestBase {
 
     @Test
     void silentWhenAnExpenseExistsToday() {
-        transactionService.add(expense("SCB", FOOD, null, 100, java.time.LocalDate.of(2026, 7, 6)));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 100, java.time.LocalDate.of(2026, 7, 6)));
         schedulerAt(LocalDateTime.of(2026, 7, 6, 21, 0));
         scheduler.tick();
         assertEquals(0, notifications.reminders().size());

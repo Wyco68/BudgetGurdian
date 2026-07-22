@@ -35,9 +35,12 @@ abstract class ServiceTestBase {
 
     static final LocalDate DAY = LocalDate.of(2026, 7, 6);          // a Monday
     static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 6, 12, 0);
-    static final int FOOD = 1;
+    static final int DAILY_SPENDING = 1;
+    static final int REFILL = 2;
+    static final int EXTRA = 3;
+    static final int BILL = 4;
     static final int ALCOHOL = 10;
-    static final int GAMBLING = 11;
+    static final int GAMBLE = 11;
 
     @TempDir
     Path tempDir;

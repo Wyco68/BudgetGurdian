@@ -15,7 +15,7 @@ class StartupLoaderTest extends ServiceTestBase {
     @Test
     void freshDatabaseLoadsSeedsAndEmptyState() {
         assertEquals(4, store.accounts().size());
-        assertEquals(11, store.categories().size());
+        assertEquals(6, store.categories().size());
         assertEquals(3, store.settings().size());
         assertTrue(store.ledger().isEmpty());
         assertTrue(store.undoStack().isEmpty());
@@ -27,7 +27,7 @@ class StartupLoaderTest extends ServiceTestBase {
     void reloadRebuildsAllDerivedState() {
         transactionService.add(income("SCB", 100_000, DAY));
         for (int i = 1; i <= 22; i++) {
-            transactionService.add(expense("SCB", FOOD, "item" + i, 1_000, DAY));
+            transactionService.add(expense("SCB", DAILY_SPENDING, "item" + i, 1_000, DAY));
         }
         transactionService.add(expense("SCB", ALCOHOL, null, 9_000, DAY));
         transferService.add(new Transfer(0, "SCB", "SAVING", 5_000, "move", DAY, NOW));
@@ -38,8 +38,8 @@ class StartupLoaderTest extends ServiceTestBase {
         DataStore reloaded = reload();
 
         assertEquals(24, reloaded.ledger().size());
-        assertEquals(31_000, reloaded.dailyTotal(DAY));               // 22×1000 + 9000
-        assertEquals(22_000, reloaded.categoryMonthTotal(FOOD, DAY));
+        assertEquals(22_000, reloaded.dailyTotal(DAY));               // DailySpending only, not Alcohol
+        assertEquals(22_000, reloaded.categoryMonthTotal(DAILY_SPENDING, DAY));
         assertEquals(9_000, reloaded.dangerWeekTotal(DAY));
         assertEquals(20, reloaded.recentTransactions().size());       // buffer capped
         assertEquals(1, reloaded.transferGraph().edgeCount());

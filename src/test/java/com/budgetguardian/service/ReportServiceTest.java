@@ -22,10 +22,10 @@ class ReportServiceTest extends ServiceTestBase {
 
     @Test
     void periodSummarySumsExpensesOnly() {
-        transactionService.add(expense("SCB", FOOD, null, 10_000, DAY));
-        transactionService.add(expense("SCB", FOOD, null, 5_000, DAY.plusDays(2)));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 10_000, DAY));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 5_000, DAY.plusDays(2)));
         transactionService.add(income("SCB", 100_000, DAY));            // excluded
-        transactionService.add(expense("SCB", FOOD, null, 999, DAY.plusDays(40)));  // out of range
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 999, DAY.plusDays(40)));  // out of range
 
         PeriodSummary s = reports().summary(DAY, DAY.plusDays(6));
         assertEquals(15_000, s.totalSatang());
@@ -35,10 +35,10 @@ class ReportServiceTest extends ServiceTestBase {
 
     @Test
     void weeklyMonthlyYearlyWindows() {
-        transactionService.add(expense("SCB", FOOD, null, 1_000, DAY));            // Mon 2026-07-06
-        transactionService.add(expense("SCB", FOOD, null, 2_000, DAY.plusDays(6))); // Sun, same week
-        transactionService.add(expense("SCB", FOOD, null, 4_000, DAY.plusDays(20))); // same month
-        transactionService.add(expense("SCB", FOOD, null, 8_000, DAY.plusMonths(3))); // same year
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 1_000, DAY));            // Mon 2026-07-06
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 2_000, DAY.plusDays(6))); // Sun, same week
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 4_000, DAY.plusDays(20))); // same month
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 8_000, DAY.plusMonths(3))); // same year
 
         assertEquals(3_000, reports().weekly(DAY).totalSatang());
         assertEquals(7_000, reports().monthly(DAY).totalSatang());
@@ -47,24 +47,24 @@ class ReportServiceTest extends ServiceTestBase {
 
     @Test
     void categoryTotalsSortedDescendingByHeapSort() {
-        transactionService.add(expense("SCB", FOOD, null, 3_000, DAY));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 3_000, DAY));
         transactionService.add(expense("SCB", ALCOHOL, null, 9_000, DAY));
-        transactionService.add(expense("SCB", GAMBLING, null, 5_000, DAY));
-        transactionService.add(expense("SCB", FOOD, null, 1_000, DAY));   // Food now 4000
+        transactionService.add(expense("SCB", GAMBLE, null, 5_000, DAY));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 1_000, DAY));   // Food now 4000
 
         DynamicArray<CategoryTotal> totals = reports().categoryTotals(DAY, DAY);
         assertEquals(3, totals.size());
         assertEquals(ALCOHOL, totals.get(0).categoryId());   // 9000 highest
         assertEquals(9_000, totals.get(0).totalSatang());
-        assertEquals(GAMBLING, totals.get(1).categoryId());  // 5000
-        assertEquals(FOOD, totals.get(2).categoryId());      // 4000
+        assertEquals(GAMBLE, totals.get(1).categoryId());  // 5000
+        assertEquals(DAILY_SPENDING, totals.get(2).categoryId());      // 4000
     }
 
     @Test
     void highestCategoryAndDangerTotal() {
-        transactionService.add(expense("SCB", FOOD, null, 3_000, DAY));
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 3_000, DAY));
         transactionService.add(expense("SCB", ALCOHOL, null, 9_000, DAY));
-        transactionService.add(expense("SCB", GAMBLING, null, 5_000, DAY));
+        transactionService.add(expense("SCB", GAMBLE, null, 5_000, DAY));
 
         assertEquals(ALCOHOL, reports().highestCategory(DAY, DAY).categoryId());
         assertEquals(14_000, reports().dangerTotal(DAY, DAY));   // alcohol + gambling
