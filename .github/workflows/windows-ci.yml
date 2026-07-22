@@ -1,0 +1,61 @@
+name: Windows CI
+
+# Verify on every push/PR that the Windows desktop app compiles, all tests
+# pass, the distributable fat jar builds, and the packaged app actually
+# launches — wires every view and shows its window — without error.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-smoke:
+    name: Build, test & boot-smoke (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Unit & integration tests
+        run: mvn -B --no-transfer-progress test
+
+      - name: Build fat jar
+        run: mvn -B --no-transfer-progress package -DskipTests
+
+      - name: Boot-smoke the packaged app
+        # Launches the real fat jar headful on the runner's desktop session in
+        # a throwaway data dir (defaults to local SQLite). Fails the build if
+        # the app throws on startup, never reaches a shown window, or hangs.
+        run: powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
+
+      - name: Upload fat jar
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-guardian-app-jar
+          path: target/*-app.jar
+          if-no-files-found: error
+
+      - name: Upload test & smoke logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-reports
+          path: |
+            target/surefire-reports/**
+          if-no-files-found: ignore
