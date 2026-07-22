@@ -34,24 +34,24 @@ class RuleEngineTest extends ServiceTestBase {
     @Test
     void dailyBudgetBreachRaises80() {
         engineToday(DAY);
-        transactionService.add(expense("SCB", FOOD, null, 18_001, DAY));   // budget 18000
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 18_001, DAY));   // budget 18000
         assertEquals(NotificationType.DAILY_BUDGET_EXCEEDED, notifications.heroBanner().type());
     }
 
     @Test
     void exactlyAtBudgetIsNotABreach() {
         engineToday(DAY);
-        transactionService.add(expense("SCB", FOOD, null, 18_000, DAY));   // equal, not over
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 18_000, DAY));   // equal, not over
         assertNull(notifications.heroBanner());
     }
 
     @Test
     void dangerBreachRaises100AndOutranksBudget() {
         engineToday(DAY);
-        transactionService.add(expense("SCB", FOOD, null, 50_000, DAY));      // budget breach (80)
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 50_000, DAY));      // budget breach (80)
         transactionService.add(expense("SCB", ALCOHOL, null, 15_000, DAY));   // danger so far 15000
         assertEquals(NotificationType.DAILY_BUDGET_EXCEEDED, notifications.heroBanner().type());
-        transactionService.add(expense("SCB", GAMBLING, null, 6_000, DAY));   // danger 21000 > 20000
+        transactionService.add(expense("SCB", GAMBLE, null, 6_000, DAY));   // danger 21000 > 20000
         assertEquals(NotificationType.DANGER_SPENDING, notifications.heroBanner().type());
     }
 
@@ -74,9 +74,9 @@ class RuleEngineTest extends ServiceTestBase {
 
     @Test
     void refillOverdueRaises60() {
-        transactionService.add(expense("SCB", FOOD, "Bread", 3_000, DAY));
-        Transaction second = transactionService.add(expense("SCB", FOOD, "Bread", 3_000, DAY.plusDays(7)));
-        refillService.confirm(refillService.detectDuplicate(second), second.date());  // interval 7
+        transactionService.add(expense("SCB", DAILY_SPENDING, "Bread", 3_000, DAY));
+        Transaction second = transactionService.add(expense("SCB", DAILY_SPENDING, "Bread", 3_000, DAY.plusDays(7)));
+        refillService.track(second);  // interval 7
         engineToday(DAY.plusDays(20));                                        // well overdue
         assertEquals(NotificationType.REFILL_DUE, notifications.heroBanner().type());
     }
@@ -84,7 +84,7 @@ class RuleEngineTest extends ServiceTestBase {
     @Test
     void rebuildClearsResolvedAlerts() {
         engineToday(DAY);
-        Transaction over = transactionService.add(expense("SCB", FOOD, null, 30_000, DAY));
+        Transaction over = transactionService.add(expense("SCB", DAILY_SPENDING, null, 30_000, DAY));
         assertEquals(NotificationType.DAILY_BUDGET_EXCEEDED, notifications.heroBanner().type());
         transactionService.delete(over.id());                                // back under budget
         assertNull(notifications.heroBanner());                              // rebuild dropped it

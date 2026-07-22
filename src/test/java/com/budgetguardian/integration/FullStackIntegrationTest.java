@@ -62,10 +62,10 @@ class FullStackIntegrationTest {
         ctx.transactions().add(new Transaction(0, TransactionType.INCOME, "SAVING", null, null,
                 1_000_000, "scholarship", MON, NOW));
         // A few expenses on SCB.
-        ctx.transactions().add(expense("SCB", 1, "Bread", 5_000, MON));           // Food
+        ctx.transactions().add(expense("SCB", 1, "Bread", 5_000, MON));           // DailySpending
         ctx.transactions().add(expense("SCB", 1, "Bread", 5_000, MON.plusDays(7))); // repeat → refillable
         ctx.transactions().add(expense("SCB", 10, null, 12_000, MON));            // Alcohol
-        ctx.transactions().add(expense("SCB", 11, null, 15_000, MON));            // Gambling → danger 27000 > 20000
+        ctx.transactions().add(expense("SCB", 11, null, 15_000, MON));            // Gamble → danger 27000 > 20000
         // Transfer Saving → SCB.
         ctx.transfers().add(new Transfer(0, "SAVING", "SCB", 200_000, "top up", MON, NOW));
         // Debt: owe Alice 100000, pay 40000.
@@ -87,11 +87,9 @@ class FullStackIntegrationTest {
         assertEquals(200_000, ctx.store().transferGraph().totalFlow("SAVING", "SCB"));
         assertTrue(ctx.store().transferGraph().hasPath("SAVING", "SCB"));
 
-        // Confirm the refillable item detected on the repeat purchase.
+        // The repeat purchase auto-tracks the refillable item.
         var repeat = lastBreadPurchase();
-        var prompt = ctx.refills().detectDuplicate(repeat);
-        assertNotNull(prompt);
-        ctx.refills().confirm(prompt, repeat.date());
+        assertNotNull(ctx.refills().track(repeat));
         assertNotNull(ctx.store().refillItems().get("bread"));
 
         // Restart: rebuild a fresh context from the same DB.

@@ -16,29 +16,18 @@ import java.time.temporal.ChronoUnit;
  * Refillable-item detection and reminders.
  *
  * <p><b>Flow:</b> after an expense with an item name is recorded, the
- * controller calls {@link #detectDuplicate}. If the item is already
- * confirmed refillable, its purchase is recorded silently. Otherwise the
- * ledger is scanned (linear search — the item index is the ledger itself)
- * for an earlier purchase of the same normalized name; if one exists, a
- * {@link RefillPrompt} is returned and the UI asks <em>"Keep as
- * refillable?"</em>. "Yes" → {@link #confirm} persists the item permanently.
- * "No" → nothing is stored, so the question naturally comes back on the next
- * duplicate (per requirements, only "Yes" is remembered).</p>
+ * controller calls {@link #track}. If the item is already confirmed
+ * refillable, its purchase is recorded silently. Otherwise the ledger is
+ * scanned (linear search — the item index is the ledger itself) for an
+ * earlier purchase of the same normalized name; if one exists, the item is
+ * auto-confirmed refillable immediately — no "keep as refillable?" prompt,
+ * repeat purchases of the same item are tracked silently from the second
+ * occurrence on.</p>
  *
- * <p><b>Time complexity:</b> detect O(n) ledger scan; confirm/record O(1);
- * overdue scan O(r) items.</p>
+ * <p><b>Time complexity:</b> track O(n) ledger scan on first repeat, O(1)
+ * once known; overdue scan O(r) items.</p>
  */
 public final class RefillService {
-
-    /**
-     * Request for the "keep as refillable?" dialog.
-     *
-     * @param itemName     normalized item name
-     * @param lastPurchase date of the previous purchase found in the ledger
-     * @param gapDays      days between the previous and the current purchase
-     */
-    public record RefillPrompt(String itemName, LocalDate lastPurchase, long gapDays) {
-    }
 
     private final DataStore store;
     private final EventBus bus;
@@ -61,40 +50,40 @@ public final class RefillService {
     /**
      * Called after an expense was recorded. Three outcomes:
      * <ul>
-     *   <li>item already refillable → purchase recorded, returns null</li>
-     *   <li>item bought before but not confirmed → returns a prompt</li>
-     *   <li>first purchase or no item name → returns null</li>
+     *   <li>item already refillable → purchase recorded silently</li>
+     *   <li>item bought before but not tracked yet → auto-confirmed refillable
+     *       now, using the observed gap as its initial interval</li>
+     *   <li>first purchase or no item name → nothing happens</li>
      * </ul>
      *
      * @param justRecorded the expense that was just added (already in the ledger)
-     * @return a prompt for the UI, or null when no question is needed
+     * @return the tracked item, or null when nothing was tracked
      */
-    public RefillPrompt detectDuplicate(Transaction justRecorded) {
+    public RefillItem track(Transaction justRecorded) {
         String name = normalize(justRecorded.itemName());
         if (name == null || name.isEmpty() || justRecorded.type() != TransactionType.EXPENSE) {
             return null;
         }
         RefillItem known = store.refillItems().get(name);
         if (known != null) {
-            recordKnownPurchase(known, justRecorded.date());
-            return null;
+            return recordKnownPurchase(known, justRecorded.date());
         }
         LocalDate previous = findPreviousPurchase(name, justRecorded);
         if (previous == null) {
             return null;
         }
         long gap = Math.max(1, ChronoUnit.DAYS.between(previous, justRecorded.date()));
-        return new RefillPrompt(name, previous, gap);
+        return confirm(name, gap, justRecorded.date());
     }
 
     /**
-     * User answered "Yes": stores the item permanently with the observed gap
-     * as its initial interval, and pushes an undo action.
+     * Auto-tracks a newly detected repeat item, storing it permanently with
+     * the observed gap as its initial interval, and pushes an undo action.
      *
      * @return the stored item
      */
-    public RefillItem confirm(RefillPrompt prompt, LocalDate purchaseDate) {
-        RefillItem item = new RefillItem(prompt.itemName(), prompt.gapDays(), purchaseDate, 2);
+    private RefillItem confirm(String itemName, long gapDays, LocalDate purchaseDate) {
+        RefillItem item = new RefillItem(itemName, gapDays, purchaseDate, 2);
         try {
             runner.run(() -> {
                 refills.upsert(item);
@@ -136,10 +125,15 @@ public final class RefillService {
         bus.publish(EventType.REFILLS_CHANGED);
     }
 
-    /** Updates a confirmed item's running-average interval for a new purchase. */
-    private void recordKnownPurchase(RefillItem known, LocalDate purchaseDate) {
+    /**
+     * Updates a confirmed item's running-average interval for a new purchase.
+     *
+     * @return the updated item, or {@code known} unchanged for a same-day
+     *         rebuy or backdated entry
+     */
+    private RefillItem recordKnownPurchase(RefillItem known, LocalDate purchaseDate) {
         if (!purchaseDate.isAfter(known.lastPurchase())) {
-            return;    // same-day rebuy or backdated entry — interval unchanged
+            return known;    // same-day rebuy or backdated entry — interval unchanged
         }
         RefillItem updated = known.recordPurchase(purchaseDate);
         try {
@@ -152,6 +146,7 @@ public final class RefillService {
         }
         store.refillItems().put(updated.name(), updated);
         bus.publish(EventType.REFILLS_CHANGED);
+        return updated;
     }
 
     /**
