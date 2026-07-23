@@ -10,6 +10,7 @@ import com.budgetguardian.service.ReminderScheduler;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
 import com.budgetguardian.view.BillsView;
+import com.budgetguardian.view.CalculatorView;
 import com.budgetguardian.view.CalendarView;
 import com.budgetguardian.view.DangerView;
 import com.budgetguardian.view.DashboardView;
@@ -90,6 +91,7 @@ public final class Main extends Application {
         shell.register(new RefillsView(services, LocalDate::now));
         shell.register(new ReportsView(services, LocalDate::now));
         shell.register(new DangerView(services, LocalDate::now));
+        shell.register(new CalculatorView(services, LocalDate::now));
         SearchView searchView = new SearchView(services);
         shell.register(searchView);
         shell.register(new GraphView(services, LocalDate::now));
