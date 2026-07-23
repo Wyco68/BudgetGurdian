@@ -4,7 +4,6 @@ import com.budgetguardian.datastructures.Iterator;
 import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.service.EventType;
-import com.budgetguardian.service.RefillService;
 import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.util.Money;
 import javafx.collections.FXCollections;
@@ -35,7 +34,8 @@ import java.util.function.Supplier;
  * {@code DoublyLinkedList} remains the source of truth; the observable list is
  * a pure UI-boundary projection (the same interop JavaFX requires for
  * {@code TableView}, kept read-only and one-directional). After an expense
- * with an item name is added, the refill duplicate-detection prompt is shown.</p>
+ * with an item name is added, repeat-purchase tracking runs silently — no
+ * confirmation prompt.</p>
  */
 public final class TransactionsView implements View {
 
@@ -81,13 +81,25 @@ public final class TransactionsView implements View {
         }
     }
 
-    /** Opens the add dialog; wired to the toolbar button and the Ctrl+N shortcut. */
+    /** Opens the add-expense dialog; wired to the toolbar button and the Ctrl+N shortcut. */
     public void openAddDialog() {
-        Optional<Transaction> created = new TransactionDialog(services.store(), today::get).showCreate();
+        Optional<Transaction> created = new ExpenseDialog(services.store(), today::get).showCreate();
         created.ifPresent(txn -> {
             Transaction saved = services.transactions().add(txn);
-            maybePromptRefill(saved);
+            services.refills().track(saved);
         });
+    }
+
+    /** Opens the add-income dialog. */
+    public void openAddIncomeDialog() {
+        Optional<Transaction> created = new IncomeDialog(services.store(), today::get).showCreate();
+        created.ifPresent(services.transactions()::add);
+    }
+
+    /** Opens the add-withdrawal dialog. */
+    public void openAddWithdrawalDialog() {
+        Optional<Transaction> created = new WithdrawalDialog(services.store(), today::get).showCreate();
+        created.ifPresent(services.transactions()::add);
     }
 
     private Node header() {
@@ -96,16 +108,20 @@ public final class TransactionsView implements View {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button add = new Button("＋ New");
-        add.getStyleClass().add("primary-button");
-        add.setOnAction(e -> openAddDialog());
+        Button addExpense = new Button("＋ Expense");
+        addExpense.getStyleClass().add("primary-button");
+        addExpense.setOnAction(e -> openAddDialog());
+        Button addIncome = new Button("＋ Income");
+        addIncome.setOnAction(e -> openAddIncomeDialog());
+        Button addWithdrawal = new Button("＋ Withdrawal");
+        addWithdrawal.setOnAction(e -> openAddWithdrawalDialog());
         Button edit = new Button("Edit");
         edit.setOnAction(e -> editSelected());
         Button delete = new Button("Delete");
         delete.getStyleClass().add("danger-button");
         delete.setOnAction(e -> deleteSelected());
 
-        HBox bar = new HBox(8, title, spacer, add, edit, delete);
+        HBox bar = new HBox(8, title, spacer, addExpense, addIncome, addWithdrawal, edit, delete);
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
     }
@@ -147,8 +163,12 @@ public final class TransactionsView implements View {
         if (selected == null) {
             return;
         }
-        new TransactionDialog(services.store(), today::get).showEdit(selected)
-                .ifPresent(services.transactions()::edit);
+        Optional<Transaction> edited = switch (selected.type()) {
+            case EXPENSE -> new ExpenseDialog(services.store(), today::get).showEdit(selected);
+            case INCOME -> new IncomeDialog(services.store(), today::get).showEdit(selected);
+            case WITHDRAWAL -> new WithdrawalDialog(services.store(), today::get).showEdit(selected);
+        };
+        edited.ifPresent(services.transactions()::edit);
     }
 
     private void deleteSelected() {
@@ -162,24 +182,6 @@ public final class TransactionsView implements View {
         confirm.showAndWait().ifPresent(button -> {
             if (button == ButtonType.OK) {
                 services.transactions().delete(selected.id());
-            }
-        });
-    }
-
-    private void maybePromptRefill(Transaction saved) {
-        RefillService.RefillPrompt prompt = services.refills().detectDuplicate(saved);
-        if (prompt == null) {
-            return;
-        }
-        Alert ask = new Alert(Alert.AlertType.CONFIRMATION,
-                "You purchased \"" + prompt.itemName() + "\" again.\nLast purchase: "
-                        + prompt.lastPurchase().format(UiFormat.DATE) + " (" + prompt.gapDays()
-                        + " days ago).\n\nKeep it as a refillable item?",
-                ButtonType.YES, ButtonType.NO);
-        ask.setHeaderText("Refillable item?");
-        ask.showAndWait().ifPresent(button -> {
-            if (button == ButtonType.YES) {
-                services.refills().confirm(prompt, saved.date());
             }
         });
     }
