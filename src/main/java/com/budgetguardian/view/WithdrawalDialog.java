@@ -82,7 +82,7 @@ public final class WithdrawalDialog {
         grid.setVgap(10);
         grid.setPadding(new Insets(16));
         grid.addRow(0, new Label("Account"), account);
-        grid.addRow(1, new Label("Amount (THB)"), amount);
+        grid.addRow(1, new Label("Amount (THB)"), DialogSupport.amountFieldWithCalculator(amount));
         grid.addRow(2, new Label("Reason"), reason);
         grid.addRow(3, new Label("Date"), date);
         grid.add(error, 1, 4);

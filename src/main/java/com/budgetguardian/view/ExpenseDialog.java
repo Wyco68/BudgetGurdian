@@ -110,7 +110,7 @@ public final class ExpenseDialog {
         int r = 0;
         grid.addRow(r++, new Label("Account"), account);
         grid.addRow(r++, new Label("Category"), category);
-        grid.addRow(r++, new Label("Amount (THB)"), amount);
+        grid.addRow(r++, new Label("Amount (THB)"), DialogSupport.amountFieldWithCalculator(amount));
         grid.addRow(r++, new Label("Item"), item);
         grid.addRow(r++, reasonLabel, reason);
         grid.addRow(r++, new Label("Date"), date);

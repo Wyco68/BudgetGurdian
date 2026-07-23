@@ -2,9 +2,19 @@ package com.budgetguardian.view;
 
 import com.budgetguardian.datastructures.DynamicArray;
 import com.budgetguardian.model.Account;
+import com.budgetguardian.service.BudgetException;
+import com.budgetguardian.service.CalculatorService;
 import com.budgetguardian.service.DataStore;
+import com.budgetguardian.util.Money;
+import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
 import java.util.function.Function;
@@ -45,5 +55,62 @@ final class DialogSupport {
     static void applyStylesheet(Dialog<?> dialog, Class<?> owner) {
         dialog.getDialogPane().getStylesheets().add(owner.getResource("/css/styles.css").toExternalForm());
         dialog.getDialogPane().getStyleClass().add("app-shell");
+    }
+
+    /**
+     * @return {@code amount} paired with a "🧮" button that opens an inline
+     *         expression calculator; "Use" writes the result back into
+     *         {@code amount}. Replaces the standalone calculator screen —
+     *         the calculator only ever exists to fill an amount field.
+     */
+    static HBox amountFieldWithCalculator(TextField amount) {
+        Button calcButton = new Button("🧮");
+        calcButton.getStyleClass().add("calc-button");
+        PopOver popOver = new PopOver();
+        CalculatorService calculator = new CalculatorService();
+
+        calcButton.setOnAction(e -> {
+            TextField expression = new TextField();
+            expression.setPromptText("e.g. 120 + 45.50");
+            Label result = new Label("—");
+            result.getStyleClass().add("stat-med");
+            Label error = new Label();
+            error.getStyleClass().add("note-danger");
+            long[] lastSatang = {-1};
+
+            Button equals = new Button("=");
+            equals.getStyleClass().add("primary-button");
+            Runnable evaluate = () -> {
+                try {
+                    lastSatang[0] = calculator.evaluateToSatang(expression.getText());
+                    result.setText(Money.format(lastSatang[0]));
+                    error.setText("");
+                } catch (BudgetException ex) {
+                    error.setText(ex.getMessage());
+                }
+            };
+            equals.setOnAction(ev -> evaluate.run());
+            expression.setOnAction(ev -> evaluate.run());
+
+            Button use = new Button("Use");
+            use.getStyleClass().add("button");
+            use.setOnAction(ev -> {
+                if (lastSatang[0] >= 0) {
+                    amount.setText(Money.formatPlain(lastSatang[0]));
+                }
+                popOver.hide();
+            });
+
+            HBox actions = new HBox(8, equals, use);
+            VBox content = new VBox(8, expression, result, actions, error);
+            content.setPadding(new Insets(12));
+            content.setPrefWidth(240);
+            content.getStyleClass().add("popover-content");
+            popOver.toggle(calcButton, content);
+        });
+
+        HBox row = new HBox(8, amount, calcButton);
+        HBox.setHgrow(amount, Priority.ALWAYS);
+        return row;
     }
 }

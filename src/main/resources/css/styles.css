@@ -465,6 +465,19 @@
 .popover-content { -fx-background-color: transparent; }
 .list-title { -fx-text-fill: -text; -fx-font-weight: bold; -fx-font-size: 13px; }
 
+.calc-button {
+    -fx-background-color: -bg-3;
+    -fx-text-fill: -text;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-padding: 6 10 6 10;
+    -fx-font-size: 14px;
+}
+.calc-button:hover { -fx-background-color: -bg-3; -fx-border-color: -accent; }
+
 /* ---- scrollbars --------------------------------------------------------- */
 
 .scroll-bar {
