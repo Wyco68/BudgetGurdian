@@ -1,5 +1,6 @@
 package com.budgetguardian.service;
 
+import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Debt;
 import com.budgetguardian.model.DebtPayment;
 import com.budgetguardian.model.RefillItem;
@@ -49,5 +50,16 @@ public sealed interface Action {
 
     /** An item was confirmed refillable; undo forgets it (next duplicate asks again). */
     record ConfirmRefill(RefillItem item) implements Action {
+    }
+
+    /** A bill was created; undo deletes it. */
+    record AddBill(Bill bill) implements Action {
+    }
+
+    /**
+     * A bill was paid; undo deletes the logged transaction and restores the
+     * bill's previous {@code lastPaidDate}.
+     */
+    record PayBill(Bill before, Transaction payment) implements Action {
     }
 }

@@ -23,6 +23,7 @@ public final class SqliteRepositories {
                 new SqliteTransferRepository(connection),
                 new SqliteDebtRepository(connection),
                 new SqliteRefillRepository(connection),
-                new SqliteSettingsRepository(connection));
+                new SqliteSettingsRepository(connection),
+                new SqliteBillRepository(connection));
     }
 }

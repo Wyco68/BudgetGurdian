@@ -7,6 +7,7 @@ import com.budgetguardian.datastructures.HashMap;
 import com.budgetguardian.datastructures.Iterator;
 import com.budgetguardian.datastructures.Stack;
 import com.budgetguardian.model.Account;
+import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Category;
 import com.budgetguardian.model.Debt;
 import com.budgetguardian.model.DebtPayment;
@@ -31,7 +32,8 @@ import java.time.LocalDate;
  *   <li>{@code DoublyLinkedList} — transaction ledger and transfer history
  *       (chronological, O(1) tail append, reverse iteration for recent-first)</li>
  *   <li>{@code HashMap} — accounts, categories, debts, per-debt payment lists,
- *       refill items, settings, and three derived total maps (O(1) reads)</li>
+ *       refill items, bills, settings, and three derived total maps (O(1)
+ *       reads)</li>
  *   <li>{@code CircularBuffer(20)} — recent-transactions widget</li>
  *   <li>{@code Stack} — undo actions, session-only</li>
  *   <li>{@code Graph} — transfer network, rebuilt from history on change</li>
@@ -62,6 +64,7 @@ public final class DataStore {
     private final HashMap<Long, DoublyLinkedList<DebtPayment>> debtPayments = new HashMap<>();
     private final HashMap<String, RefillItem> refillItems = new HashMap<>();
     private final HashMap<String, String> settings = new HashMap<>();
+    private final HashMap<Long, Bill> bills = new HashMap<>();
 
     private final HashMap<String, Long> dailyTotals = new HashMap<>();
     private final HashMap<String, Long> categoryMonthTotals = new HashMap<>();
@@ -103,6 +106,10 @@ public final class DataStore {
 
     public HashMap<String, String> settings() {
         return settings;
+    }
+
+    public HashMap<Long, Bill> bills() {
+        return bills;
     }
 
     public CircularBuffer<Transaction> recentTransactions() {

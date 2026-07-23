@@ -17,6 +17,8 @@ public enum EventType {
     DEBTS_CHANGED,
     /** Refillable items changed. */
     REFILLS_CHANGED,
+    /** Bills changed (added or paid). */
+    BILLS_CHANGED,
     /** A setting value changed. */
     SETTINGS_CHANGED,
     /** A notification was raised (hero banner / reminder queue). */

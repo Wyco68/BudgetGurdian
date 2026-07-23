@@ -82,6 +82,21 @@ class RuleEngineTest extends ServiceTestBase {
     }
 
     @Test
+    void billDueRaises70() {
+        billService.add(new com.budgetguardian.model.Bill(0, "Internet", 6_000, 15, null, NOW));
+        engineToday(DAY.withDayOfMonth(16));                                   // past payday, unpaid
+        assertEquals(NotificationType.BILL_DUE, notifications.heroBanner().type());
+    }
+
+    @Test
+    void payingTheBillClearsTheAlertUntilNextMonth() {
+        var bill = billService.add(new com.budgetguardian.model.Bill(0, "Internet", 6_000, 15, null, NOW));
+        engineToday(DAY.withDayOfMonth(16));
+        billService.pay(bill.id(), "SCB", 6_000, DAY.withDayOfMonth(16), "");
+        assertNull(notifications.heroBanner());
+    }
+
+    @Test
     void rebuildClearsResolvedAlerts() {
         engineToday(DAY);
         Transaction over = transactionService.add(expense("SCB", DAILY_SPENDING, null, 30_000, DAY));

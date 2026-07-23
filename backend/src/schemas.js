@@ -75,6 +75,18 @@ export const refillItemSchema = z.object({
   purchaseCount: z.number().int().min(0),
 });
 
+export const billSchema = z.object({
+  name: z.string().min(1).max(200),
+  amountSatang: satang,
+  payday: z.number().int().min(1).max(31).nullish(),
+  lastPaidDate: dateOnly.nullish(),
+  createdAt: naiveDateTime,
+});
+
+export const billLastPaidSchema = z.object({
+  lastPaidDate: dateOnly.nullish(),
+});
+
 export const settingSchema = z.object({
   value: z.string().max(500),
 });

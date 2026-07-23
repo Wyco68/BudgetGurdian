@@ -80,6 +80,17 @@ export function toRefillItemDto(row) {
   };
 }
 
+export function toBillDto(row) {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    amountSatang: Number(row.amountSatang),
+    payday: row.payday,
+    lastPaidDate: row.lastPaidDate ? formatDateOnly(row.lastPaidDate) : null,
+    createdAt: formatNaiveDateTime(row.createdAt),
+  };
+}
+
 export function toSettingDto(row) {
   return {
     key: row.key,

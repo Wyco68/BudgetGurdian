@@ -1,6 +1,7 @@
 package com.budgetguardian.service;
 
 import com.budgetguardian.datastructures.Iterator;
+import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Debt;
 import com.budgetguardian.model.DebtStatus;
 
@@ -19,8 +20,8 @@ import java.util.function.Supplier;
  * that no longer applies.</p>
  *
  * <p><b>Rules (priority):</b> danger spending 100, debt overdue 90, daily
- * budget 80, refill due 60. The daily reminder (20) is raised by the
- * scheduler, not here, so a rebuild does not erase it — it lives in the
+ * budget 80, bill due 70, refill due 60. The daily reminder (20) is raised by
+ * the scheduler, not here, so a rebuild does not erase it — it lives in the
  * separate reminder queue.</p>
  *
  * <p><b>Today</b> is supplied via a {@link Supplier} so tests control the
@@ -46,6 +47,7 @@ public final class RuleEngine {
         bus.subscribe(EventType.DEBTS_CHANGED, t -> evaluate());
         bus.subscribe(EventType.SETTINGS_CHANGED, t -> evaluate());
         bus.subscribe(EventType.REFILLS_CHANGED, t -> evaluate());
+        bus.subscribe(EventType.BILLS_CHANGED, t -> evaluate());
     }
 
     /**
@@ -60,6 +62,7 @@ public final class RuleEngine {
         checkDebtOverdue(now, stamp);
         checkDailyBudget(now, stamp);
         checkRefill(now, stamp);
+        checkBillDue(now, stamp);
     }
 
     private void checkDanger(LocalDate now, LocalDateTime stamp) {
@@ -109,6 +112,22 @@ public final class RuleEngine {
             notifications.raiseHero(new Notification(NotificationType.REFILL_DUE,
                     "🔁 Refill Reminder",
                     overdue + (overdue == 1 ? " item is" : " items are") + " overdue for refill",
+                    stamp));
+        }
+    }
+
+    private void checkBillDue(LocalDate now, LocalDateTime stamp) {
+        int due = 0;
+        Iterator<Bill> it = store.bills().values();
+        while (it.hasNext()) {
+            if (it.next().isDue(now)) {
+                due++;
+            }
+        }
+        if (due > 0) {
+            notifications.raiseHero(new Notification(NotificationType.BILL_DUE,
+                    "💳 Bill Due",
+                    due + (due == 1 ? " bill is" : " bills are") + " due for payment",
                     stamp));
         }
     }

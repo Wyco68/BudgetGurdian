@@ -4,6 +4,7 @@ import com.budgetguardian.database.DatabaseManager;
 import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.repository.AccountRepository;
+import com.budgetguardian.repository.BillRepository;
 import com.budgetguardian.repository.CategoryRepository;
 import com.budgetguardian.repository.DebtRepository;
 import com.budgetguardian.repository.RefillRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import com.budgetguardian.repository.sqlite.SqliteAccountRepository;
+import com.budgetguardian.repository.sqlite.SqliteBillRepository;
 import com.budgetguardian.repository.sqlite.SqliteCategoryRepository;
 import com.budgetguardian.repository.sqlite.SqliteDebtRepository;
 import com.budgetguardian.repository.sqlite.SqliteRefillRepository;
@@ -54,6 +56,7 @@ abstract class ServiceTestBase {
     TransferService transferService;
     DebtService debtService;
     RefillService refillService;
+    BillService billService;
     SettingsService settingsService;
     SearchService searchService;
     UndoService undoService;
@@ -72,18 +75,21 @@ abstract class ServiceTestBase {
         DebtRepository debtRepository = new SqliteDebtRepository(connection);
         RefillRepository refillRepository = new SqliteRefillRepository(connection);
         SettingsRepository settingsRepository = new SqliteSettingsRepository(connection);
+        BillRepository billRepository = new SqliteBillRepository(connection);
 
         loader = new StartupLoader(accountRepository, categoryRepository, transactionRepository,
-                transferRepository, debtRepository, refillRepository, settingsRepository);
+                transferRepository, debtRepository, refillRepository, settingsRepository, billRepository);
         store = loader.load();
         bus = new EventBus();
         transactionService = new TransactionService(store, bus, runner, transactionRepository, accountRepository);
         transferService = new TransferService(store, bus, runner, transferRepository, accountRepository);
         debtService = new DebtService(store, bus, runner, debtRepository, accountRepository);
         refillService = new RefillService(store, bus, runner, refillRepository);
+        billService = new BillService(store, bus, runner, billRepository, transactionService);
         settingsService = new SettingsService(store, bus, settingsRepository);
         searchService = new SearchService(store);
-        undoService = new UndoService(store, transactionService, transferService, debtService, refillService);
+        undoService = new UndoService(store, transactionService, transferService, debtService,
+                refillService, billService);
     }
 
     @AfterEach

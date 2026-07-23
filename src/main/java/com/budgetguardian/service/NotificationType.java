@@ -13,6 +13,8 @@ public enum NotificationType {
     DEBT_OVERDUE(90),
     /** Today's spending exceeded the daily budget. */
     DAILY_BUDGET_EXCEEDED(80),
+    /** A recurring bill has reached its payday and hasn't been paid this month. */
+    BILL_DUE(70),
     /** A refillable item is overdue for repurchase. */
     REFILL_DUE(60),
     /** Evening nudge to record today's expenses. */

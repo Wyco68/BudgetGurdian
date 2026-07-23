@@ -4,6 +4,7 @@ import com.budgetguardian.datastructures.DoublyLinkedList;
 import com.budgetguardian.datastructures.HashMap;
 import com.budgetguardian.datastructures.Iterator;
 import com.budgetguardian.model.Account;
+import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Category;
 import com.budgetguardian.model.Debt;
 import com.budgetguardian.model.DebtPayment;
@@ -11,6 +12,7 @@ import com.budgetguardian.model.RefillItem;
 import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.Transfer;
 import com.budgetguardian.repository.AccountRepository;
+import com.budgetguardian.repository.BillRepository;
 import com.budgetguardian.repository.CategoryRepository;
 import com.budgetguardian.repository.DebtRepository;
 import com.budgetguardian.repository.RefillRepository;
@@ -39,11 +41,12 @@ public final class StartupLoader {
     private final DebtRepository debts;
     private final RefillRepository refills;
     private final SettingsRepository settings;
+    private final BillRepository bills;
 
     public StartupLoader(AccountRepository accounts, CategoryRepository categories,
                          TransactionRepository transactions, TransferRepository transfers,
                          DebtRepository debts, RefillRepository refills,
-                         SettingsRepository settings) {
+                         SettingsRepository settings, BillRepository bills) {
         this.accounts = accounts;
         this.categories = categories;
         this.transactions = transactions;
@@ -51,6 +54,7 @@ public final class StartupLoader {
         this.debts = debts;
         this.refills = refills;
         this.settings = settings;
+        this.bills = bills;
     }
 
     /**
@@ -67,6 +71,7 @@ public final class StartupLoader {
             copyDebts(store, debts.findAll(), debts.findAllPayments());
             copyRefills(store, refills.findAll());
             copySettings(store, settings.findAll());
+            copyBills(store, bills.findAll());
         } catch (StorageException e) {
             throw new BudgetException("Failed to load data from database", e);
         }
@@ -134,6 +139,14 @@ public final class StartupLoader {
         while (it.hasNext()) {
             HashMap.Entry<String, String> entry = it.next();
             store.settings().put(entry.key(), entry.value());
+        }
+    }
+
+    private static void copyBills(DataStore store, HashMap<Long, Bill> loaded) {
+        Iterator<HashMap.Entry<Long, Bill>> it = loaded.iterator();
+        while (it.hasNext()) {
+            HashMap.Entry<Long, Bill> entry = it.next();
+            store.bills().put(entry.key(), entry.value());
         }
     }
 }

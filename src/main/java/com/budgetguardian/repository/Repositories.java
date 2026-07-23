@@ -18,5 +18,6 @@ public record Repositories(
         TransferRepository transfers,
         DebtRepository debts,
         RefillRepository refills,
-        SettingsRepository settings) {
+        SettingsRepository settings,
+        BillRepository bills) {
 }

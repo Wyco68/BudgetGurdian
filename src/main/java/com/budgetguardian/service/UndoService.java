@@ -22,15 +22,17 @@ public final class UndoService {
     private final TransferService transferService;
     private final DebtService debtService;
     private final RefillService refillService;
+    private final BillService billService;
 
     public UndoService(DataStore store, TransactionService transactionService,
                        TransferService transferService, DebtService debtService,
-                       RefillService refillService) {
+                       RefillService refillService, BillService billService) {
         this.store = store;
         this.transactionService = transactionService;
         this.transferService = transferService;
         this.debtService = debtService;
         this.refillService = refillService;
+        this.billService = billService;
     }
 
     /** @return whether an action is available to undo. O(1). */
@@ -57,6 +59,8 @@ public final class UndoService {
             case Action.AddDebt(var debt) -> debtService.undoAddDebt(debt);
             case Action.AddDebtPayment(var payment, var settled) -> debtService.undoPayment(payment, settled);
             case Action.ConfirmRefill(var item) -> refillService.undoConfirm(item);
+            case Action.AddBill(var bill) -> billService.undoAddBill(bill);
+            case Action.PayBill(var before, var payment) -> billService.undoPayBill(before, payment);
         }
         return true;
     }

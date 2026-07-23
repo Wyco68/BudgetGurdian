@@ -23,6 +23,7 @@ public final class ApiRepositories {
                 new ApiTransferRepository(http),
                 new ApiDebtRepository(http),
                 new ApiRefillRepository(http),
-                new ApiSettingsRepository(http));
+                new ApiSettingsRepository(http),
+                new ApiBillRepository(http));
     }
 }

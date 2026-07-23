@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { validateBody } from '../middleware/validate.js';
 import {
   balanceSchema,
+  billLastPaidSchema,
+  billSchema,
   debtPaymentSchema,
   debtSchema,
   debtStatusSchema,
@@ -16,6 +18,7 @@ import * as transactions from '../controllers/transactionController.js';
 import * as transfers from '../controllers/transferController.js';
 import * as debts from '../controllers/debtController.js';
 import * as refills from '../controllers/refillController.js';
+import * as bills from '../controllers/billController.js';
 import * as settings from '../controllers/settingController.js';
 
 /** All /api/v1 resource routes. Bodies are zod-validated before controllers run. */
@@ -53,6 +56,12 @@ apiRouter.delete('/debt-payments/:paymentId', debts.removePayment);
 apiRouter.get('/refill-items', refills.list);
 apiRouter.put('/refill-items/:name', validateBody(refillItemSchema), refills.upsert);
 apiRouter.delete('/refill-items/:name', refills.remove);
+
+// Recurring bills.
+apiRouter.get('/bills', bills.list);
+apiRouter.post('/bills', validateBody(billSchema), bills.create);
+apiRouter.put('/bills/:id/last-paid', validateBody(billLastPaidSchema), bills.updateLastPaid);
+apiRouter.delete('/bills/:id', bills.remove);
 
 // Settings — key-value.
 apiRouter.get('/settings', settings.list);
