@@ -206,7 +206,23 @@
 
 /* accent hairline on the primary account/stat tiles for a touch of colour */
 .card-account { -fx-border-color: -line-soft -line-soft -line-soft -accent-deep; }
+.card-account.selectable { -fx-cursor: hand; }
+.card-account.selectable:hover { -fx-border-color: -line -line -line -accent; }
+.card-account-selected {
+    -fx-border-color: -accent;
+    -fx-border-width: 2;
+    -fx-background-color: -bg-3;
+}
 .card-stat { -fx-min-width: 200; }
+.card-total {
+    -fx-background-color: -bg-2;
+    -fx-background-radius: 14;
+    -fx-padding: 18;
+    -fx-border-color: -accent;
+    -fx-border-radius: 14;
+    -fx-border-width: 1.5;
+    -fx-effect: dropshadow(gaussian, rgba(45, 212, 191, 0.25), 14, 0.0, 0, 4);
+}
 
 .card-heading {
     -fx-text-fill: -text-muted;

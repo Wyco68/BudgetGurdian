@@ -22,12 +22,18 @@ import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
  * Dashboard: today's spending vs budget, account balances, monthly stats,
  * category totals and the recent-transactions widget (from the
  * {@code CircularBuffer}).
+ *
+ * <p>Account cards are clickable — clicking toggles it into a selection set,
+ * and a "Selected Total" card shows the combined balance of every selected
+ * account, letting you quickly compare or sum a subset of accounts.</p>
  *
  * <p>All figures are read from the {@link DataStore}'s O(1) derived totals and
  * structures — no database access. Refreshes on balance and transaction
@@ -39,6 +45,7 @@ public final class DashboardView implements View {
     private final DataStore store;
     private final Supplier<LocalDate> today;
     private final VBox root = new VBox(16);
+    private final Set<String> selectedAccountIds = new LinkedHashSet<>();
 
     public DashboardView(ServiceContext services, Supplier<LocalDate> today) {
         this.services = services;
@@ -118,6 +125,9 @@ public final class DashboardView implements View {
     private Node balancesRow() {
         FlowPane row = new FlowPane(12, 12);
         DashboardOrder.forEachAccount(store, account -> row.getChildren().add(balanceCard(account)));
+        if (!selectedAccountIds.isEmpty()) {
+            row.getChildren().add(selectedTotalCard());
+        }
         return row;
     }
 
@@ -127,8 +137,50 @@ public final class DashboardView implements View {
         Label balance = new Label(Money.format(account.balanceSatang()));
         balance.getStyleClass().add(account.balanceSatang() < 0 ? "stat-med-neg" : "stat-med");
         VBox card = new VBox(6, name, balance);
-        card.getStyleClass().addAll("card", "card-account");
+        card.getStyleClass().addAll("card", "card-account", "selectable");
+        if (selectedAccountIds.contains(account.id())) {
+            card.getStyleClass().add("card-account-selected");
+        }
         card.setPrefWidth(180);
+        card.setOnMouseClicked(e -> {
+            if (!selectedAccountIds.remove(account.id())) {
+                selectedAccountIds.add(account.id());
+            }
+            refresh();
+        });
+        return card;
+    }
+
+    /** Combined balance of every clicked account, with a clear-selection hint. */
+    private Node selectedTotalCard() {
+        long total = 0;
+        StringBuilder names = new StringBuilder();
+        for (String id : selectedAccountIds) {
+            Account account = store.accounts().get(id);
+            if (account == null) {
+                continue;
+            }
+            total += account.balanceSatang();
+            if (names.length() > 0) {
+                names.append(" + ");
+            }
+            names.append(account.name());
+        }
+        Label heading = new Label("Selected Total (" + selectedAccountIds.size() + ")");
+        heading.getStyleClass().add("card-heading");
+        Label value = new Label(Money.format(total));
+        value.getStyleClass().add(total < 0 ? "stat-med-neg" : "stat-med");
+        Label breakdown = new Label(names.toString());
+        breakdown.getStyleClass().add("muted");
+        breakdown.setWrapText(true);
+
+        VBox card = new VBox(6, heading, value, breakdown);
+        card.getStyleClass().addAll("card-total", "selectable");
+        card.setPrefWidth(220);
+        card.setOnMouseClicked(e -> {
+            selectedAccountIds.clear();
+            refresh();
+        });
         return card;
     }
 
