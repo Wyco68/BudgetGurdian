@@ -37,6 +37,10 @@ public final class ReportService {
     public record CategoryTotal(int categoryId, String name, boolean danger, long totalSatang) {
     }
 
+    /** One Mon–Sun week's total for a single category. */
+    public record WeeklyTotal(LocalDate weekStart, long totalSatang) {
+    }
+
     /** Outstanding and settled debt figures. */
     public record DebtReport(long outstandingPayableSatang, long outstandingReceivableSatang,
                              int openCount, int settledCount) {
@@ -133,6 +137,36 @@ public final class ReportService {
         for (int i = 0; i < rows.size(); i++) {
             if (rows.get(i).danger()) {
                 total += rows.get(i).totalSatang();
+            }
+        }
+        return total;
+    }
+
+    /**
+     * @return the last {@code weeks} Mon–Sun weekly totals for one category
+     *         by name (oldest first, including the week containing {@code anyDay})
+     */
+    public DynamicArray<WeeklyTotal> weeklyCategoryTrend(String categoryName, LocalDate anyDay, int weeks) {
+        LocalDate thisMonday = anyDay.with(DayOfWeek.MONDAY);
+        DynamicArray<WeeklyTotal> rows = new DynamicArray<>();
+        for (int i = weeks - 1; i >= 0; i--) {
+            LocalDate weekStart = thisMonday.minusWeeks(i);
+            rows.append(new WeeklyTotal(weekStart, categoryTotalInRange(categoryName, weekStart, weekStart.plusDays(6))));
+        }
+        return rows;
+    }
+
+    private long categoryTotalInRange(String categoryName, LocalDate from, LocalDate to) {
+        long total = 0;
+        Iterator<Transaction> it = store.ledger().iterator();
+        while (it.hasNext()) {
+            Transaction txn = it.next();
+            if (txn.type() != TransactionType.EXPENSE || !inRange(txn.date(), from, to) || txn.categoryId() == null) {
+                continue;
+            }
+            Category category = store.categories().get(txn.categoryId());
+            if (category != null && category.name().equals(categoryName)) {
+                total += txn.amountSatang();
             }
         }
         return total;

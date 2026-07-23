@@ -11,6 +11,7 @@ import com.budgetguardian.service.ServiceContext;
 import com.budgetguardian.view.AppShell;
 import com.budgetguardian.view.BillsView;
 import com.budgetguardian.view.CalendarView;
+import com.budgetguardian.view.DangerView;
 import com.budgetguardian.view.DashboardView;
 import com.budgetguardian.view.DebtView;
 import com.budgetguardian.view.GraphView;
@@ -88,6 +89,7 @@ public final class Main extends Application {
         shell.register(new BillsView(services, LocalDate::now));
         shell.register(new RefillsView(services, LocalDate::now));
         shell.register(new ReportsView(services, LocalDate::now));
+        shell.register(new DangerView(services, LocalDate::now));
         SearchView searchView = new SearchView(services);
         shell.register(searchView);
         shell.register(new GraphView(services, LocalDate::now));
