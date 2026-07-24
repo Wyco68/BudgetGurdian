@@ -1,10 +1,13 @@
 package com.budgetguardian.view;
 
+import com.budgetguardian.datastructures.Iterator;
 import com.budgetguardian.model.Account;
 import com.budgetguardian.model.Category;
+import com.budgetguardian.model.RefillItem;
 import com.budgetguardian.model.Transaction;
 import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.service.DataStore;
+import com.budgetguardian.service.RefillService;
 import com.budgetguardian.service.TransactionService;
 import com.budgetguardian.util.Money;
 import javafx.geometry.Insets;
@@ -16,18 +19,27 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
  * Modal add/edit dialog for an expense: the only transaction type that
  * carries a category and an item name. Reason is required only when the
- * chosen category is Extra — every other category leaves it optional.
+ * chosen category is Extra — every other category leaves it optional. When
+ * the Refill category is chosen, the item field becomes a dropdown of
+ * already-tracked refill items plus an "Add new item" option that reveals a
+ * free-text field.
  */
 public final class ExpenseDialog {
+
+    private static final String ADD_NEW_ITEM = "+ Add new item";
 
     private final DataStore store;
     private final Supplier<LocalDate> today;
@@ -71,7 +83,9 @@ public final class ExpenseDialog {
         TextField amount = new TextField();
         amount.setPromptText("0.00");
         TextField item = new TextField();
-        item.setPromptText("item name (optional)");
+        ComboBox<String> refillItemChoice = new ComboBox<>();
+        refillItemChoice.setMaxWidth(Double.MAX_VALUE);
+        HBox itemRow = new HBox(8, refillItemChoice, item);
         TextField reason = new TextField();
         DatePicker date = new DatePicker(today.get());
         Label reasonLabel = new Label("Reason");
@@ -84,15 +98,63 @@ public final class ExpenseDialog {
             reasonLabel.setText(requiresReason ? "Reason (required)" : "Reason (optional)");
             reason.setPromptText(requiresReason ? "required for Extra" : "optional");
         };
-        category.valueProperty().addListener((obs, old, value) -> updateReasonPrompt.run());
+
+        Runnable populateRefillChoices = () -> {
+            String previous = refillItemChoice.getValue();
+            refillItemChoice.getItems().clear();
+            List<String> names = new ArrayList<>();
+            Iterator<RefillItem> it = store.refillItems().values();
+            while (it.hasNext()) {
+                names.add(it.next().name());
+            }
+            Collections.sort(names);
+            refillItemChoice.getItems().addAll(names);
+            refillItemChoice.getItems().add(ADD_NEW_ITEM);
+            refillItemChoice.setValue(previous != null && refillItemChoice.getItems().contains(previous)
+                    ? previous : ADD_NEW_ITEM);
+        };
+
+        Runnable updateItemMode = () -> {
+            boolean isRefill = category.getValue() != null
+                    && category.getValue().name().equals(TransactionService.REFILL_CATEGORY_NAME);
+            refillItemChoice.setVisible(isRefill);
+            refillItemChoice.setManaged(isRefill);
+            boolean showTextField = !isRefill || ADD_NEW_ITEM.equals(refillItemChoice.getValue());
+            item.setVisible(showTextField);
+            item.setManaged(showTextField);
+            item.setPromptText(isRefill ? "new item name" : "item name (optional)");
+        };
+
+        category.valueProperty().addListener((obs, old, value) -> {
+            updateReasonPrompt.run();
+            if (value != null && value.name().equals(TransactionService.REFILL_CATEGORY_NAME)) {
+                populateRefillChoices.run();
+            }
+            updateItemMode.run();
+        });
+        refillItemChoice.valueProperty().addListener((obs, old, value) -> updateItemMode.run());
 
         if (existing != null) {
             account.setValue(store.accounts().get(existing.accountId()));
-            category.setValue(existing.categoryId() != null ? store.categories().get(existing.categoryId()) : null);
+            Category existingCategory = existing.categoryId() != null ? store.categories().get(existing.categoryId()) : null;
+            category.setValue(existingCategory);
             amount.setText(Money.formatPlain(existing.amountSatang()));
-            item.setText(existing.itemName());
             reason.setText(existing.reason());
             date.setValue(existing.date());
+            boolean isRefill = existingCategory != null
+                    && existingCategory.name().equals(TransactionService.REFILL_CATEGORY_NAME);
+            if (isRefill && existing.itemName() != null) {
+                populateRefillChoices.run();
+                String normalized = RefillService.normalize(existing.itemName());
+                if (refillItemChoice.getItems().contains(normalized)) {
+                    refillItemChoice.setValue(normalized);
+                } else {
+                    refillItemChoice.setValue(ADD_NEW_ITEM);
+                    item.setText(existing.itemName());
+                }
+            } else {
+                item.setText(existing.itemName());
+            }
         } else {
             if (prefillSatang != null) {
                 amount.setText(Money.formatPlain(prefillSatang));
@@ -100,8 +162,10 @@ public final class ExpenseDialog {
             if (preferredAccountId != null) {
                 account.setValue(store.accounts().get(preferredAccountId));
             }
+            item.setPromptText("item name (optional)");
         }
         updateReasonPrompt.run();
+        updateItemMode.run();
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -111,7 +175,7 @@ public final class ExpenseDialog {
         grid.addRow(r++, new Label("Account"), account);
         grid.addRow(r++, new Label("Category"), category);
         grid.addRow(r++, new Label("Amount (THB)"), DialogSupport.amountFieldWithCalculator(amount));
-        grid.addRow(r++, new Label("Item"), item);
+        grid.addRow(r++, new Label("Item"), itemRow);
         grid.addRow(r++, reasonLabel, reason);
         grid.addRow(r++, new Label("Date"), date);
         grid.add(error, 1, r);
@@ -121,8 +185,14 @@ public final class ExpenseDialog {
         javafx.scene.Node saveButton = dialog.getDialogPane().lookupButton(saveType);
         saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
             try {
+                boolean isRefill = category.getValue() != null
+                        && category.getValue().name().equals(TransactionService.REFILL_CATEGORY_NAME);
+                String effectiveItem = isRefill && !ADD_NEW_ITEM.equals(refillItemChoice.getValue())
+                        && refillItemChoice.getValue() != null
+                        ? refillItemChoice.getValue()
+                        : item.getText();
                 built[0] = build(existing, account.getValue(), category.getValue(),
-                        amount.getText(), item.getText(), reason.getText(), date.getValue());
+                        amount.getText(), effectiveItem, reason.getText(), date.getValue());
             } catch (RuntimeException e) {
                 error.setText(e.getMessage());
                 event.consume();

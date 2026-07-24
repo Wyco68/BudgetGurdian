@@ -28,6 +28,9 @@ public final class TransactionService {
     /** Name of the catch-all category that requires a reason on every expense. */
     public static final String EXTRA_CATEGORY_NAME = "Extra";
 
+    /** Name of the category whose expenses drive refill-item tracking. */
+    public static final String REFILL_CATEGORY_NAME = "Refill";
+
     private final DataStore store;
     private final EventBus bus;
     private final TransactionRunner runner;
