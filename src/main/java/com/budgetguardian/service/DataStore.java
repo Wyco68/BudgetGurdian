@@ -253,4 +253,16 @@ public final class DataStore {
             totals.put(key, next);
         }
     }
+
+    /**
+     * @return the combined live key count of the four derived-total maps.
+     *         Zero-valued keys are pruned by {@link #addTo}, so after every
+     *         contribution has been reversed (undo/delete) this returns to 0 —
+     *         the invariant a leak-guard test asserts, so repeated add/undo
+     *         cycles can't grow the maps without bound.
+     */
+    int derivedTotalKeyCount() {
+        return dailyTotals.size() + otherDailyTotals.size()
+                + categoryMonthTotals.size() + dangerWeekTotals.size();
+    }
 }
