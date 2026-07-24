@@ -40,6 +40,21 @@ public final class PopOver {
         popup.show(anchor, at.getX() - 260, at.getY());
     }
 
+    /**
+     * Shows {@code content} immediately to the right of {@code anchor} (aligned
+     * to its top), or hides if already open. Keeps the panel beside a dialog
+     * rather than on top of it — used by the in-field calculator.
+     */
+    public void toggleRightOf(Node anchor, Region content) {
+        if (popup.isShowing()) {
+            popup.hide();
+            return;
+        }
+        replaceContent(content);
+        Bounds bounds = anchor.localToScreen(anchor.getBoundsInLocal());
+        popup.show(anchor, bounds.getMaxX() + 8, bounds.getMinY());
+    }
+
     /** Swaps the displayed content (used when the model changes while open). */
     public void replaceContent(Region content) {
         container.getChildren().setAll(content);

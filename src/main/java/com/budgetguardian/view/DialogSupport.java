@@ -51,10 +51,21 @@ final class DialogSupport {
         };
     }
 
-    /** Applies the app stylesheet and shell style class every dialog pane needs. */
+    /** Uniform width for the transaction-family modals, so switching type or
+     *  category never resizes the dialog. */
+    static final double DIALOG_WIDTH = 460;
+
+    /**
+     * Applies the app stylesheet, shell style class and the shared fixed width
+     * every transaction-family dialog pane needs — a stable footprint means
+     * showing/hiding a field (e.g. the refill dropdown) can't change the
+     * modal's size.
+     */
     static void applyStylesheet(Dialog<?> dialog, Class<?> owner) {
         dialog.getDialogPane().getStylesheets().add(owner.getResource("/css/styles.css").toExternalForm());
         dialog.getDialogPane().getStyleClass().add("app-shell");
+        dialog.getDialogPane().setPrefWidth(DIALOG_WIDTH);
+        dialog.getDialogPane().setMinWidth(DIALOG_WIDTH);
     }
 
     /**
@@ -106,11 +117,13 @@ final class DialogSupport {
             content.setPadding(new Insets(12));
             content.setPrefWidth(240);
             content.getStyleClass().add("popover-content");
-            popOver.toggle(calcButton, content);
+            popOver.toggleRightOf(calcButton, content);
         });
 
         HBox row = new HBox(8, amount, calcButton);
         HBox.setHgrow(amount, Priority.ALWAYS);
+        amount.setMaxWidth(Double.MAX_VALUE);
+        row.setMaxWidth(Double.MAX_VALUE);
         return row;
     }
 }
