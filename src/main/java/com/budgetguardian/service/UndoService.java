@@ -41,6 +41,34 @@ public final class UndoService {
     }
 
     /**
+     * @return a marker of the current undo-stack depth, to pair with
+     *         {@link #groupSince(int)} so a multi-step user operation collapses
+     *         into a single undo unit
+     */
+    public int mark() {
+        return store.undoStack().size();
+    }
+
+    /**
+     * Collapses every action pushed since {@code mark} into one
+     * {@link Action.Compound}, so a single {@link #undo()} reverses the whole
+     * operation. No-op if fewer than two actions were pushed.
+     */
+    public void groupSince(int mark) {
+        int count = store.undoStack().size() - mark;
+        if (count <= 1) {
+            return;
+        }
+        // Pop newest-first, insert at 0 so parts end up in apply order.
+        com.budgetguardian.datastructures.DynamicArray<Action> parts =
+                new com.budgetguardian.datastructures.DynamicArray<>();
+        for (int i = 0; i < count; i++) {
+            parts.insert(0, store.undoStack().pop());
+        }
+        store.undoStack().push(new Action.Compound(parts));
+    }
+
+    /**
      * Undoes the most recent modification.
      *
      * @return {@code true} if an action was undone, {@code false} if the
@@ -50,7 +78,12 @@ public final class UndoService {
         if (store.undoStack().isEmpty()) {
             return false;
         }
-        Action action = store.undoStack().pop();
+        undoOne(store.undoStack().pop());
+        return true;
+    }
+
+    /** Applies the inverse of one action (recursing into compounds). */
+    private void undoOne(Action action) {
         switch (action) {
             case Action.AddTransaction(var txn) -> transactionService.undoAdd(txn);
             case Action.DeleteTransaction(var txn) -> transactionService.undoDelete(txn);
@@ -61,7 +94,11 @@ public final class UndoService {
             case Action.ConfirmRefill(var item) -> refillService.undoConfirm(item);
             case Action.AddBill(var bill) -> billService.undoAddBill(bill);
             case Action.PayBill(var before, var payment) -> billService.undoPayBill(before, payment);
+            case Action.Compound(var parts) -> {
+                for (int i = parts.size() - 1; i >= 0; i--) {   // reverse of apply order
+                    undoOne(parts.get(i));
+                }
+            }
         }
-        return true;
     }
 }

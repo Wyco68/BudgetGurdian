@@ -85,8 +85,12 @@ public final class TransactionsView implements View {
     public void openAddDialog() {
         Optional<Transaction> created = new ExpenseDialog(services.store(), today::get).showCreate();
         created.ifPresent(txn -> {
+            // Group the expense and any refill-item tracking it triggers into one
+            // undo unit, so a single Ctrl+Z cancels the whole operation.
+            int mark = services.undo().mark();
             Transaction saved = services.transactions().add(txn);
             services.refills().track(saved);
+            services.undo().groupSince(mark);
         });
     }
 

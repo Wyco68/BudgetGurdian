@@ -1,5 +1,6 @@
 package com.budgetguardian.service;
 
+import com.budgetguardian.datastructures.DynamicArray;
 import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Debt;
 import com.budgetguardian.model.DebtPayment;
@@ -61,5 +62,16 @@ public sealed interface Action {
      * bill's previous {@code lastPaidDate}.
      */
     record PayBill(Bill before, Transaction payment) implements Action {
+    }
+
+    /**
+     * Several sub-actions that were performed as one user operation (e.g. an
+     * expense plus the refill-item tracking it triggered). Undo reverses every
+     * part, so a single Ctrl+Z cancels the whole operation.
+     *
+     * @param parts the sub-actions in the order they were applied; undo walks
+     *              them in reverse
+     */
+    record Compound(DynamicArray<Action> parts) implements Action {
     }
 }

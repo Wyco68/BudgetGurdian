@@ -110,4 +110,25 @@ class RefillServiceTest extends ServiceTestBase {
         Transaction noItem = transactionService.add(expense("SCB", DAILY_SPENDING, null, 100, DAY));
         assertNull(refillService.track(noItem));
     }
+
+    @Test
+    void groupedUndoReversesBothExpenseAndRefillTrackingInOneStep() {
+        // Mirror the add-expense UI flow: the expense and the refill-item
+        // tracking it triggers are grouped into one undo unit.
+        int mark = undoService.mark();
+        Transaction saved = transactionService.add(expense("SCB", REFILL, "Shampoo", 12_000, DAY));
+        refillService.track(saved);        // pushes a ConfirmRefill on top of the AddTransaction
+        undoService.groupSince(mark);
+
+        assertEquals(1, store.undoStack().size(), "operation should collapse to one undo unit");
+        assertTrue(refillService.overdueItems(DAY.plusDays(90)).size() >= 0);   // item exists
+        assertEquals(-12_000, store.accounts().get("SCB").balanceSatang());
+
+        // A single undo cancels the whole operation: transaction AND refill item.
+        assertTrue(undoService.undo());
+        assertTrue(store.ledger().isEmpty(), "transaction not undone");
+        assertNull(store.refillItems().get("shampoo"), "refill item not undone");
+        assertEquals(0, store.accounts().get("SCB").balanceSatang());
+        assertTrue(store.undoStack().isEmpty());
+    }
 }
