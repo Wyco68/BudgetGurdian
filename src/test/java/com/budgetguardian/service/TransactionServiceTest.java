@@ -126,6 +126,18 @@ class TransactionServiceTest extends ServiceTestBase {
     }
 
     @Test
+    void dailyAndOtherTotalsAreTrackedSeparately() {
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 4_000, DAY));
+        transactionService.add(expense("SCB", ALCOHOL, null, 6_000, DAY));
+        transactionService.add(expense("SCB", BILL, null, 5_000, DAY));
+
+        assertEquals(4_000, store.dailyTotal(DAY));          // DailySpending only
+        assertEquals(11_000, store.otherDailyTotal(DAY));    // alcohol + bill
+        assertEquals(4_000, reload().dailyTotal(DAY));
+        assertEquals(11_000, reload().otherDailyTotal(DAY));
+    }
+
+    @Test
     void extraExpenseRequiresReasonButOthersDoNot() {
         Transaction blankReasonDailySpending = new Transaction(0, TransactionType.EXPENSE,
                 "SCB", DAILY_SPENDING, null, 100, "", DAY, NOW);

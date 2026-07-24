@@ -23,10 +23,11 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 /**
- * Calendar screen: a Monday-first month grid where each day cell shows its
- * total spending, colour-coded against the daily budget (green under, red
- * over). Prev/next buttons page months. Reads daily totals from the
- * {@code DataStore} in O(1) per day.
+ * Calendar screen: a Monday-first month grid where each day cell shows
+ * DailySpending and all-other-category spending as two separately coloured
+ * lines; the cell background is colour-coded against the daily budget (which
+ * only counts DailySpending) — green under, red over. Prev/next buttons page
+ * months. Reads daily totals from the {@code DataStore} in O(1) per day.
  */
 public final class CalendarView implements View {
 
@@ -122,12 +123,21 @@ public final class CalendarView implements View {
 
     private Node dayCell(LocalDate date, long budget) {
         long spent = store.dailyTotal(date);
+        long other = store.otherDailyTotal(date);
         Label dayNumber = new Label(Integer.toString(date.getDayOfMonth()));
         dayNumber.getStyleClass().add("card-heading");
-        Label amount = new Label(spent > 0 ? Money.formatPlain(spent) : "");
-        amount.getStyleClass().add("mono");
 
-        VBox cell = new VBox(4, dayNumber, amount);
+        VBox cell = new VBox(4, dayNumber);
+        if (spent > 0) {
+            Label dailyLabel = new Label(Money.formatPlain(spent));
+            dailyLabel.getStyleClass().add("cal-daily");
+            cell.getChildren().add(dailyLabel);
+        }
+        if (other > 0) {
+            Label otherLabel = new Label(Money.formatPlain(other));
+            otherLabel.getStyleClass().add("cal-other");
+            cell.getChildren().add(otherLabel);
+        }
         cell.setPadding(new Insets(8));
         cell.setPrefSize(150, 76);
         cell.getStyleClass().add("cal-cell");

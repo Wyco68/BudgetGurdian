@@ -67,6 +67,7 @@ public final class DataStore {
     private final HashMap<Long, Bill> bills = new HashMap<>();
 
     private final HashMap<String, Long> dailyTotals = new HashMap<>();
+    private final HashMap<String, Long> otherDailyTotals = new HashMap<>();
     private final HashMap<String, Long> categoryMonthTotals = new HashMap<>();
     private final HashMap<String, Long> dangerWeekTotals = new HashMap<>();
 
@@ -143,9 +144,14 @@ public final class DataStore {
 
     // ---- derived-total reads (all O(1)) --------------------------------------
 
-    /** @return total expenses on {@code date} in satang. */
+    /** @return total DailySpending-category expenses on {@code date} in satang. */
     public long dailyTotal(LocalDate date) {
         return dailyTotals.getOrDefault(dayKey(date), 0L);
+    }
+
+    /** @return total expenses on {@code date} outside the DailySpending category, in satang. */
+    public long otherDailyTotal(LocalDate date) {
+        return otherDailyTotals.getOrDefault(dayKey(date), 0L);
     }
 
     /** @return total expenses of one category in {@code date}'s month, satang. */
@@ -171,8 +177,12 @@ public final class DataStore {
         }
         long delta = sign * txn.amountSatang();
         Category category = categories.get(txn.categoryId());
-        if (category != null && category.name().equals(DAILY_SPENDING_CATEGORY)) {
-            addTo(dailyTotals, dayKey(txn.date()), delta);
+        if (category != null) {
+            if (category.name().equals(DAILY_SPENDING_CATEGORY)) {
+                addTo(dailyTotals, dayKey(txn.date()), delta);
+            } else {
+                addTo(otherDailyTotals, dayKey(txn.date()), delta);
+            }
         }
         addTo(categoryMonthTotals, monthKey(txn.categoryId(), txn.date()), delta);
         if (category != null && category.danger()) {
@@ -226,6 +236,7 @@ public final class DataStore {
     /** Recomputes all three derived total maps from the ledger. O(n). */
     public void rebuildTotals() {
         dailyTotals.clear();
+        otherDailyTotals.clear();
         categoryMonthTotals.clear();
         dangerWeekTotals.clear();
         Iterator<Transaction> it = ledger.iterator();

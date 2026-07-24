@@ -401,6 +401,8 @@
 .cal-under { -fx-border-color: -accent-deep; }
 .cal-over { -fx-background-color: #331b1b; -fx-border-color: -neg; }
 .cal-today { -fx-border-color: -accent; -fx-border-width: 2; }
+.cal-daily { -fx-font-family: "Consolas", "Menlo", monospace; -fx-text-fill: -accent; }
+.cal-other { -fx-font-family: "Consolas", "Menlo", monospace; -fx-text-fill: #818cf8; }
 
 /* ---- reports + charts --------------------------------------------------- */
 
