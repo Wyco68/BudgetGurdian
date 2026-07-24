@@ -1,5 +1,8 @@
 package com.budgetguardian.view;
 
+import com.budgetguardian.datastructures.Iterator;
+import com.budgetguardian.model.Transaction;
+import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.service.DataStore;
 import com.budgetguardian.service.EventType;
 import com.budgetguardian.service.ServiceContext;
@@ -8,7 +11,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -149,6 +155,67 @@ public final class CalendarView implements View {
         if (date.equals(today.get())) {
             cell.getStyleClass().add("cal-today");
         }
+        cell.setOnMouseClicked(e -> showDayTransactions(date));
         return cell;
+    }
+
+    /** Opens a modal listing every transaction dated {@code date}, newest first. */
+    private void showDayTransactions(LocalDate date) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Transactions — " + date.format(UiFormat.DATE));
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().getStylesheets().add(
+                CalendarView.class.getResource("/css/styles.css").toExternalForm());
+        dialog.getDialogPane().getStyleClass().add("app-shell");
+
+        VBox list = new VBox(4);
+        list.setPadding(new Insets(12));
+        long dayTotal = 0;
+        int count = 0;
+        Iterator<Transaction> it = store.ledger().descendingIterator();
+        while (it.hasNext()) {
+            Transaction txn = it.next();
+            if (!txn.date().equals(date)) {
+                continue;
+            }
+            list.getChildren().add(transactionRow(txn));
+            if (txn.type() == TransactionType.EXPENSE) {
+                dayTotal += txn.amountSatang();
+            }
+            count++;
+        }
+        if (count == 0) {
+            Label empty = new Label("No transactions on this day.");
+            empty.getStyleClass().add("muted");
+            list.getChildren().add(empty);
+        } else {
+            Label total = new Label("Total spending: " + Money.format(dayTotal));
+            total.getStyleClass().add("section-label");
+            list.getChildren().add(total);
+        }
+
+        ScrollPane scroll = new ScrollPane(list);
+        scroll.setFitToWidth(true);
+        scroll.setPrefViewportHeight(320);
+        scroll.getStyleClass().add("edge-to-edge");
+        dialog.getDialogPane().setContent(scroll);
+        dialog.getDialogPane().setPrefWidth(420);
+        dialog.showAndWait();
+    }
+
+    private Node transactionRow(Transaction txn) {
+        String sign = txn.type() == TransactionType.INCOME ? "+" : "−";
+        Label left = new Label(txn.type().name().charAt(0) + " · "
+                + UiFormat.categoryName(store, txn.categoryId())
+                + (txn.itemName() != null ? " · " + txn.itemName() : "")
+                + (txn.reason() != null && !txn.reason().isBlank() ? "  (" + txn.reason() + ")" : ""));
+        Label right = new Label(sign + Money.formatPlain(txn.amountSatang()));
+        right.getStyleClass().add(txn.type() == TransactionType.INCOME ? "amount-pos" : "amount-neg");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox row = new HBox(8, left, spacer, right);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("list-row");
+        return row;
     }
 }
