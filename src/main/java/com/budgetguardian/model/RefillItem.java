@@ -44,6 +44,15 @@ public record RefillItem(String name, double intervalDays, LocalDate lastPurchas
     }
 
     /**
+     * @return days the current stock has lasted so far — elapsed days since
+     *         the last purchase. Negative-safe: a backdated "today" yields 0.
+     */
+    public long daysLasted(LocalDate today) {
+        long days = java.time.temporal.ChronoUnit.DAYS.between(lastPurchase, today);
+        return Math.max(0, days);
+    }
+
+    /**
      * Records another purchase: interval becomes the running average of gaps,
      * count increments, last purchase advances. O(1).
      *

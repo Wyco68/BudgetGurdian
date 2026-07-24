@@ -67,6 +67,43 @@ class RefillServiceTest extends ServiceTestBase {
     }
 
     @Test
+    void refillCategoryTracksFromFirstPurchase() {
+        Transaction first = transactionService.add(expense("SCB", REFILL, "Shampoo", 12_000, DAY));
+        RefillItem item = refillService.track(first);
+        assertEquals("shampoo", item.name());
+        assertEquals(1, item.purchaseCount());
+        assertEquals(30.0, item.intervalDays());   // provisional until a real gap is seen
+        assertEquals(item, store.refillItems().get("shampoo"));
+    }
+
+    @Test
+    void secondRefillPurchaseReplacesProvisionalInterval() {
+        refillService.track(transactionService.add(expense("SCB", REFILL, "Shampoo", 12_000, DAY)));
+        assertEquals(30.0, store.refillItems().get("shampoo").intervalDays());   // provisional
+
+        Transaction second = transactionService.add(expense("SCB", REFILL, "Shampoo", 12_000, DAY.plusDays(21)));
+        RefillItem updated = refillService.track(second);
+        assertEquals(21.0, updated.intervalDays(), 1e-9);   // provisional 30 fully replaced
+        assertEquals(2, updated.purchaseCount());
+        assertEquals(DAY.plusDays(21), updated.lastPurchase());
+    }
+
+    @Test
+    void daysLastedCountsElapsedTimeSinceLastPurchase() {
+        Transaction first = transactionService.add(expense("SCB", REFILL, "Shampoo", 12_000, DAY));
+        RefillItem item = refillService.track(first);
+        assertEquals(0, item.daysLasted(DAY));
+        assertEquals(9, item.daysLasted(DAY.plusDays(9)));
+        assertEquals(0, item.daysLasted(DAY.minusDays(3)));   // backdated "today" clamps to 0
+    }
+
+    @Test
+    void nonRefillCategoryStillNeedsARepeatPurchase() {
+        Transaction first = transactionService.add(expense("SCB", DAILY_SPENDING, "Bread", 3_000, DAY));
+        assertNull(refillService.track(first));   // first non-Refill purchase tracks nothing
+    }
+
+    @Test
     void incomeAndItemlessExpensesNeverTrack() {
         Transaction in = transactionService.add(income("SCB", 1_000, DAY));
         assertNull(refillService.track(in));

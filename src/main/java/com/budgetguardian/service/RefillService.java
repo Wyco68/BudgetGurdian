@@ -16,18 +16,27 @@ import java.time.temporal.ChronoUnit;
  * Refillable-item detection and reminders.
  *
  * <p><b>Flow:</b> after an expense with an item name is recorded, the
- * controller calls {@link #track}. If the item is already confirmed
- * refillable, its purchase is recorded silently. Otherwise the ledger is
- * scanned (linear search — the item index is the ledger itself) for an
- * earlier purchase of the same normalized name; if one exists, the item is
- * auto-confirmed refillable immediately — no "keep as refillable?" prompt,
- * repeat purchases of the same item are tracked silently from the second
- * occurrence on.</p>
+ * controller calls {@link #track}. If the item is already tracked, its
+ * purchase is recorded silently and the running-average interval updates.
+ * Otherwise:</p>
+ * <ul>
+ *   <li><b>Refill-category expenses</b> are tracked from the very first
+ *       purchase — choosing that category <em>is</em> the user declaring the
+ *       item refillable, so it appears in the Refills screen immediately with
+ *       a provisional {@value #DEFAULT_INTERVAL_DAYS}-day interval that the
+ *       second purchase replaces with the real observed gap.</li>
+ *   <li><b>Other categories</b> are tracked only once a repeat purchase of the
+ *       same normalized name is found in the ledger (linear search), using the
+ *       observed gap as the initial interval.</li>
+ * </ul>
  *
  * <p><b>Time complexity:</b> track O(n) ledger scan on first repeat, O(1)
  * once known; overdue scan O(r) items.</p>
  */
 public final class RefillService {
+
+    /** Provisional interval for a first-purchase Refill item, until a real gap is observed. */
+    static final int DEFAULT_INTERVAL_DAYS = 30;
 
     private final DataStore store;
     private final EventBus bus;
@@ -48,12 +57,14 @@ public final class RefillService {
     }
 
     /**
-     * Called after an expense was recorded. Three outcomes:
+     * Called after an expense was recorded. Outcomes:
      * <ul>
-     *   <li>item already refillable → purchase recorded silently</li>
-     *   <li>item bought before but not tracked yet → auto-confirmed refillable
-     *       now, using the observed gap as its initial interval</li>
-     *   <li>first purchase or no item name → nothing happens</li>
+     *   <li>item already tracked → purchase recorded silently</li>
+     *   <li>Refill-category expense, first purchase → tracked immediately with
+     *       a provisional interval</li>
+     *   <li>other category, repeat purchase found in the ledger → tracked now,
+     *       using the observed gap as its initial interval</li>
+     *   <li>otherwise (first non-Refill purchase, or no item name) → nothing</li>
      * </ul>
      *
      * @param justRecorded the expense that was just added (already in the ledger)
@@ -69,21 +80,33 @@ public final class RefillService {
             return recordKnownPurchase(known, justRecorded.date());
         }
         LocalDate previous = findPreviousPurchase(name, justRecorded);
-        if (previous == null) {
-            return null;
+        if (previous != null) {
+            long gap = Math.max(1, ChronoUnit.DAYS.between(previous, justRecorded.date()));
+            return confirm(name, gap, justRecorded.date(), 2);
         }
-        long gap = Math.max(1, ChronoUnit.DAYS.between(previous, justRecorded.date()));
-        return confirm(name, gap, justRecorded.date());
+        if (isRefillCategory(justRecorded)) {
+            return confirm(name, DEFAULT_INTERVAL_DAYS, justRecorded.date(), 1);
+        }
+        return null;
+    }
+
+    /** @return whether the expense is filed under the Refill category. */
+    private boolean isRefillCategory(Transaction txn) {
+        if (txn.categoryId() == null) {
+            return false;
+        }
+        var category = store.categories().get(txn.categoryId());
+        return category != null && category.name().equals(TransactionService.REFILL_CATEGORY_NAME);
     }
 
     /**
-     * Auto-tracks a newly detected repeat item, storing it permanently with
-     * the observed gap as its initial interval, and pushes an undo action.
+     * Tracks a newly detected item, storing it permanently with
+     * {@code intervalDays} as its initial interval, and pushes an undo action.
      *
      * @return the stored item
      */
-    private RefillItem confirm(String itemName, long gapDays, LocalDate purchaseDate) {
-        RefillItem item = new RefillItem(itemName, gapDays, purchaseDate, 2);
+    private RefillItem confirm(String itemName, long intervalDays, LocalDate purchaseDate, int purchaseCount) {
+        RefillItem item = new RefillItem(itemName, intervalDays, purchaseDate, purchaseCount);
         try {
             runner.run(() -> {
                 refills.upsert(item);

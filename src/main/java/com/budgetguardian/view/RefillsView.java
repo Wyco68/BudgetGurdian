@@ -20,9 +20,10 @@ import java.time.LocalDate;
 import java.util.function.Supplier;
 
 /**
- * Refillable-items screen: every item the user confirmed as refillable, with
- * its running-average interval, last purchase and next-expected date. Overdue
- * items are flagged. Read-only projection of the refill {@code HashMap}.
+ * Refillable-items screen: every tracked item with its running-average
+ * interval, last purchase, how long the current stock has lasted so far, and
+ * the next-expected date. Overdue items are flagged. Read-only projection of
+ * the refill {@code HashMap}.
  */
 public final class RefillsView implements View {
 
@@ -80,6 +81,11 @@ public final class RefillsView implements View {
         count.setCellValueFactory(c -> ro(Integer.toString(c.getValue().purchaseCount())));
         TableColumn<RefillItem, String> last = new TableColumn<>("Last Purchase");
         last.setCellValueFactory(c -> ro(c.getValue().lastPurchase().format(UiFormat.DATE)));
+        TableColumn<RefillItem, String> lasted = new TableColumn<>("Lasted");
+        lasted.setCellValueFactory(c -> {
+            long days = c.getValue().daysLasted(today.get());
+            return ro(days + (days == 1 ? " day" : " days"));
+        });
         TableColumn<RefillItem, String> next = new TableColumn<>("Next Expected");
         next.setCellValueFactory(c -> ro(c.getValue().nextExpected().format(UiFormat.DATE)));
         TableColumn<RefillItem, String> status = new TableColumn<>("Status");
@@ -89,11 +95,12 @@ public final class RefillsView implements View {
         table.getColumns().add(interval);
         table.getColumns().add(count);
         table.getColumns().add(last);
+        table.getColumns().add(lasted);
         table.getColumns().add(next);
         table.getColumns().add(status);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
         table.getStyleClass().add("data-table");
-        table.setPlaceholder(new Label("No refillable items yet — confirm one when a purchase repeats."));
+        table.setPlaceholder(new Label("No refillable items yet — record an expense under the Refill category."));
     }
 
     private static ObservableValue<String> ro(String value) {
