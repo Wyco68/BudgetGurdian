@@ -45,6 +45,7 @@ public final class DashboardView implements View {
     private final DataStore store;
     private final Supplier<LocalDate> today;
     private final VBox root = new VBox(16);
+    private final ScrollPane scroller = new ScrollPane(root);
     private final Set<String> selectedAccountIds = new LinkedHashSet<>();
 
     public DashboardView(ServiceContext services, Supplier<LocalDate> today) {
@@ -53,6 +54,8 @@ public final class DashboardView implements View {
         this.today = today;
         root.getStyleClass().add("view-root");
         root.setPadding(new Insets(20));
+        scroller.setFitToWidth(true);
+        scroller.getStyleClass().addAll("view-root", "edge-to-edge");
         services.bus().subscribe(EventType.TRANSACTIONS_CHANGED, t -> refresh());
         services.bus().subscribe(EventType.BALANCES_CHANGED, t -> refresh());
         refresh();
@@ -70,7 +73,7 @@ public final class DashboardView implements View {
 
     @Override
     public Node getNode() {
-        return root;
+        return scroller;
     }
 
     @Override
@@ -79,7 +82,12 @@ public final class DashboardView implements View {
                 pageHeader(),
                 budgetCard(),
                 sectionLabel("Accounts"),
-                balancesRow(),
+                balancesRow());
+        if (!selectedAccountIds.isEmpty()) {
+            // Own row: showing the combined total never reflows the account cards.
+            root.getChildren().add(selectedTotalCard());
+        }
+        root.getChildren().addAll(
                 sectionLabel("This Month"),
                 monthlyStatsRow(),
                 sectionLabel("Category Totals — " + YearMonth.from(today.get())),
@@ -125,9 +133,6 @@ public final class DashboardView implements View {
     private Node balancesRow() {
         FlowPane row = new FlowPane(12, 12);
         DashboardOrder.forEachAccount(store, account -> row.getChildren().add(balanceCard(account)));
-        if (!selectedAccountIds.isEmpty()) {
-            row.getChildren().add(selectedTotalCard());
-        }
         return row;
     }
 
@@ -261,14 +266,12 @@ public final class DashboardView implements View {
             list.getChildren().add(mutedLabel("No transactions recorded yet."));
             return list;
         }
+        // Shown inline (the whole dashboard scrolls), so every recent row is
+        // fully visible instead of squeezed into a small nested scroll box.
         while (it.hasNext()) {
             list.getChildren().add(recentRow(it.next()));
         }
-        ScrollPane scroll = new ScrollPane(list);
-        scroll.setFitToWidth(true);
-        scroll.setPrefViewportHeight(260);
-        scroll.getStyleClass().add("edge-to-edge");
-        return scroll;
+        return list;
     }
 
     private Node recentRow(Transaction txn) {
