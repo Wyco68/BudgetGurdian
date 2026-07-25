@@ -260,6 +260,11 @@
 }
 
 .list-row:hover { -fx-background-color: -bg-3; -fx-border-color: transparent; }
+.list-row-selected {
+    -fx-background-color: -bg-3;
+    -fx-border-color: transparent transparent -accent transparent;
+    -fx-border-width: 0 0 2 0;
+}
 
 .list-row Label { -fx-text-fill: -text; -fx-font-size: 13px; }
 
