@@ -22,6 +22,7 @@ public final class DebtMapper {
                 DebtDirection.valueOf(dto.direction),
                 dto.person,
                 dto.amountSatang,
+                dto.occurredDate != null ? LocalDate.parse(dto.occurredDate) : null,
                 dto.dueDate != null ? LocalDate.parse(dto.dueDate) : null,
                 DebtStatus.valueOf(dto.status),
                 dto.settledDate != null ? LocalDate.parse(dto.settledDate) : null,
@@ -34,6 +35,7 @@ public final class DebtMapper {
         dto.direction = debt.direction().name();
         dto.person = debt.person();
         dto.amountSatang = debt.amountSatang();
+        dto.occurredDate = debt.occurredDate() != null ? debt.occurredDate().toString() : null;
         dto.dueDate = debt.dueDate() != null ? debt.dueDate().toString() : null;
         dto.status = debt.status().name();
         dto.settledDate = debt.settledDate() != null ? debt.settledDate().toString() : null;

@@ -15,6 +15,9 @@ import java.time.LocalDateTime;
  * @param direction    payable (user owes) or receivable (user is owed)
  * @param person       counterparty name, required
  * @param amountSatang positive total amount in satang
+ * @param occurredDate day the debt was incurred; a receivable's repayments
+ *                     offset this day's spending total. Optional (may be null
+ *                     for legacy rows), then no offset applies
  * @param dueDate      optional due date; overdue check uses it when present
  * @param status       open or settled
  * @param settledDate  day the debt became settled; null while open
@@ -25,6 +28,7 @@ public record Debt(
         DebtDirection direction,
         String person,
         long amountSatang,
+        LocalDate occurredDate,
         LocalDate dueDate,
         DebtStatus status,
         LocalDate settledDate,
@@ -56,17 +60,17 @@ public record Debt(
 
     /** @return copy with the database-generated id set after insert. */
     public Debt withId(long generatedId) {
-        return new Debt(generatedId, direction, person, amountSatang, dueDate, status, settledDate, createdAt);
+        return new Debt(generatedId, direction, person, amountSatang, occurredDate, dueDate, status, settledDate, createdAt);
     }
 
     /** @return copy marked settled on the given day. */
     public Debt settled(LocalDate onDate) {
-        return new Debt(id, direction, person, amountSatang, dueDate, DebtStatus.SETTLED, onDate, createdAt);
+        return new Debt(id, direction, person, amountSatang, occurredDate, dueDate, DebtStatus.SETTLED, onDate, createdAt);
     }
 
     /** @return copy reopened (undo of a settling payment). */
     public Debt reopened() {
-        return new Debt(id, direction, person, amountSatang, dueDate, DebtStatus.OPEN, null, createdAt);
+        return new Debt(id, direction, person, amountSatang, occurredDate, dueDate, DebtStatus.OPEN, null, createdAt);
     }
 
     /** @return whether this debt is open and past its due date on {@code today}. O(1). */

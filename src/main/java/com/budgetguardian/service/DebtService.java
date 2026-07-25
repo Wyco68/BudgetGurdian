@@ -114,6 +114,12 @@ public final class DebtService {
         if (settles) {
             store.debts().put(debtId, settled);
         }
+        // Receiving on a receivable offsets the day the debt was incurred:
+        // money you fronted that day and got back no longer counts as usage.
+        if (debt.direction() == DebtDirection.RECEIVABLE && debt.occurredDate() != null) {
+            store.applyDailyOffset(debt.occurredDate(), amountSatang);
+            bus.publish(EventType.TRANSACTIONS_CHANGED);   // daily totals changed
+        }
         store.undoStack().push(new Action.AddDebtPayment(saved, settles));
         bus.publish(EventType.DEBTS_CHANGED);
         bus.publish(EventType.BALANCES_CHANGED);
@@ -189,6 +195,10 @@ public final class DebtService {
                 account.balanceSatang() - balanceEffect(debt, payment.amountSatang())));
         if (settledByThisPayment) {
             store.debts().put(reopened.id(), reopened);
+        }
+        if (debt.direction() == DebtDirection.RECEIVABLE && debt.occurredDate() != null) {
+            store.applyDailyOffset(debt.occurredDate(), -payment.amountSatang());
+            bus.publish(EventType.TRANSACTIONS_CHANGED);
         }
         bus.publish(EventType.DEBTS_CHANGED);
         bus.publish(EventType.BALANCES_CHANGED);

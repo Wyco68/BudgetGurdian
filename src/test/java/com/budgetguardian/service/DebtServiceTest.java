@@ -14,12 +14,12 @@ class DebtServiceTest extends ServiceTestBase {
 
     private Debt payable(long satang) {
         return debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice", satang,
-                DAY.plusDays(30), DebtStatus.OPEN, null, NOW));
+                DAY, DAY.plusDays(30), DebtStatus.OPEN, null, NOW));
     }
 
     private Debt receivable(long satang) {
         return debtService.add(new Debt(0, DebtDirection.RECEIVABLE, "Bob", satang,
-                null, DebtStatus.OPEN, null, NOW));
+                DAY, null, DebtStatus.OPEN, null, NOW));
     }
 
     @Test
@@ -46,6 +46,27 @@ class DebtServiceTest extends ServiceTestBase {
         debtService.pay(debt.id(), "TRUEMONEY", 50_000, DAY);
         assertEquals(50_000, store.accounts().get("TRUEMONEY").balanceSatang());
         assertEquals(DebtStatus.SETTLED, store.debts().get(debt.id()).status());
+    }
+
+    @Test
+    void receivableRepaymentOffsetsTheDayItWasIncurred() {
+        // Spent 30000 of DailySpending on DAY; 12000 was fronted for someone
+        // (a receivable incurred DAY). Getting it back cancels it from DAY's usage.
+        transactionService.add(expense("SCB", DAILY_SPENDING, null, 30_000, DAY));
+        assertEquals(30_000, store.dailyTotal(DAY));
+
+        Debt debt = receivable(12_000);            // occurredDate = DAY (helper)
+        debtService.pay(debt.id(), "SCB", 5_000, DAY.plusDays(3));
+        assertEquals(25_000, store.dailyTotal(DAY));           // 30000 − 5000
+        assertEquals(30_000, store.dailyGrossTotal(DAY));      // gross unchanged
+
+        debtService.pay(debt.id(), "SCB", 7_000, DAY.plusDays(4));
+        assertEquals(18_000, store.dailyTotal(DAY));           // fully repaid → 30000 − 12000
+
+        assertEquals(18_000, reload().dailyTotal(DAY));        // survives restart
+
+        undoService.undo();                                    // undo the 7000 receipt
+        assertEquals(25_000, store.dailyTotal(DAY));           // offset restored
     }
 
     @Test

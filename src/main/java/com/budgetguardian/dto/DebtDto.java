@@ -6,6 +6,7 @@ public final class DebtDto {
     public String direction;
     public String person;
     public long amountSatang;
+    public String occurredDate;
     public String dueDate;
     public String status;
     public String settledDate;

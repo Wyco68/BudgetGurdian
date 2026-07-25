@@ -40,8 +40,8 @@ public final class SqliteDebtRepository implements DebtRepository {
     @Override
     public HashMap<Long, Debt> findAll() throws StorageException {
         HashMap<Long, Debt> debts = new HashMap<>();
-        String sql = "SELECT id, direction, person, amount_satang, due_date, status, settled_date, created_at "
-                + "FROM debt ORDER BY id";
+        String sql = "SELECT id, direction, person, amount_satang, occurred_date, due_date, status, "
+                + "settled_date, created_at FROM debt ORDER BY id";
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
@@ -72,16 +72,17 @@ public final class SqliteDebtRepository implements DebtRepository {
 
     @Override
     public Debt insert(Debt debt) throws StorageException {
-        String sql = "INSERT INTO debt (direction, person, amount_satang, due_date, status, settled_date, "
-                + "created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO debt (direction, person, amount_satang, occurred_date, due_date, status, "
+                + "settled_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, debt.direction().name());
             stmt.setString(2, debt.person());
             stmt.setLong(3, debt.amountSatang());
-            setNullableDate(stmt, 4, debt.dueDate());
-            stmt.setString(5, debt.status().name());
-            setNullableDate(stmt, 6, debt.settledDate());
-            stmt.setString(7, debt.createdAt().toString());
+            setNullableDate(stmt, 4, debt.occurredDate());
+            setNullableDate(stmt, 5, debt.dueDate());
+            stmt.setString(6, debt.status().name());
+            setNullableDate(stmt, 7, debt.settledDate());
+            stmt.setString(8, debt.createdAt().toString());
             stmt.executeUpdate();
             try (ResultSet keys = stmt.getGeneratedKeys()) {
                 keys.next();
@@ -152,6 +153,7 @@ public final class SqliteDebtRepository implements DebtRepository {
     }
 
     private static Debt mapDebt(ResultSet rs) throws SQLException {
+        String occurredDate = rs.getString("occurred_date");
         String dueDate = rs.getString("due_date");
         String settledDate = rs.getString("settled_date");
         return new Debt(
@@ -159,6 +161,7 @@ public final class SqliteDebtRepository implements DebtRepository {
                 DebtDirection.valueOf(rs.getString("direction")),
                 rs.getString("person"),
                 rs.getLong("amount_satang"),
+                occurredDate != null ? LocalDate.parse(occurredDate) : null,
                 dueDate != null ? LocalDate.parse(dueDate) : null,
                 DebtStatus.valueOf(rs.getString("status")),
                 settledDate != null ? LocalDate.parse(settledDate) : null,

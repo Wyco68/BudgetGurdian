@@ -76,6 +76,7 @@ public final class StartupLoader {
             throw new BudgetException("Failed to load data from database", e);
         }
         store.rebuildTotals();
+        store.rebuildOffsets();
         store.rebuildRecentTransactions();
         store.rebuildTransferGraph();
         return store;

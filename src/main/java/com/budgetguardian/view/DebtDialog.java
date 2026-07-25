@@ -48,6 +48,7 @@ public final class DebtDialog {
         person.setPromptText("counterparty");
         TextField amount = new TextField();
         amount.setPromptText("0.00");
+        DatePicker occurred = new DatePicker(today.get());
         DatePicker due = new DatePicker();
         due.setPromptText("optional");
         Label error = new Label();
@@ -60,8 +61,9 @@ public final class DebtDialog {
         grid.addRow(0, new Label("Direction"), direction);
         grid.addRow(1, new Label("Person"), person);
         grid.addRow(2, new Label("Amount (THB)"), amount);
-        grid.addRow(3, new Label("Due date"), due);
-        grid.add(error, 1, 4);
+        grid.addRow(3, new Label("Date happened"), occurred);
+        grid.addRow(4, new Label("Due date"), due);
+        grid.add(error, 1, 5);
         dialog.getDialogPane().setContent(grid);
 
         Debt[] built = new Debt[1];
@@ -73,7 +75,7 @@ public final class DebtDialog {
                 }
                 long satang = Money.parse(amount.getText());
                 built[0] = new Debt(0, direction.getValue(), person.getText().trim(), satang,
-                        due.getValue(), DebtStatus.OPEN, null, LocalDateTime.now());
+                        occurred.getValue(), due.getValue(), DebtStatus.OPEN, null, LocalDateTime.now());
             } catch (RuntimeException e) {
                 error.setText(e.getMessage());
                 event.consume();

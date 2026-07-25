@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -76,8 +77,33 @@ public final class DatabaseManager implements AutoCloseable {
             stmt.execute("PRAGMA foreign_keys = ON");
         }
         applySchema();
+        applyColumnMigrations();
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("PRAGMA user_version = " + SCHEMA_VERSION);
+        }
+    }
+
+    /**
+     * Adds columns introduced after a table's original {@code CREATE} to
+     * databases that predate them. SQLite has no {@code ADD COLUMN IF NOT
+     * EXISTS}, so each add is guarded by a {@code PRAGMA table_info} check —
+     * a fresh database already has the column (from the CREATE) and skips it.
+     */
+    private void applyColumnMigrations() throws SQLException {
+        ensureColumn("debt", "occurred_date", "TEXT");
+    }
+
+    private void ensureColumn(String table, String column, String type) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             ResultSet columns = stmt.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (columns.next()) {
+                if (column.equalsIgnoreCase(columns.getString("name"))) {
+                    return;   // already present
+                }
+            }
+        }
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
         }
     }
 

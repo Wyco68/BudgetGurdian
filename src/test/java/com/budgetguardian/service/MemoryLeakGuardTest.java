@@ -49,7 +49,7 @@ class MemoryLeakGuardTest extends ServiceTestBase {
                     500, DAY.plusDays(i % 30)));
             transferService.add(new Transfer(0, "SCB", "SAVING", 300, "move", DAY, NOW));
             debtService.add(new Debt(0, DebtDirection.PAYABLE, "X", 1_000,
-                    null, DebtStatus.OPEN, null, NOW));
+                    null, null, DebtStatus.OPEN, null, NOW));
             billService.add(new Bill(0, "Bill" + i, 700, null, null, NOW));
 
             undoService.undo();   // bill

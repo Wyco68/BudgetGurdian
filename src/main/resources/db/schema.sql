@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS debt (
     direction     TEXT    NOT NULL CHECK (direction IN ('PAYABLE', 'RECEIVABLE')),
     person        TEXT    NOT NULL,
     amount_satang INTEGER NOT NULL CHECK (amount_satang > 0),
+    occurred_date TEXT,
     due_date      TEXT,
     status        TEXT    NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'SETTLED')),
     settled_date  TEXT,

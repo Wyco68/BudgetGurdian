@@ -50,9 +50,9 @@ class MapperRoundTripTest {
 
     @Test
     void debtRoundTripsWithAndWithoutDates() {
-        Debt open = new Debt(1, DebtDirection.PAYABLE, "Alice", 100000, DAY.plusDays(30),
+        Debt open = new Debt(1, DebtDirection.PAYABLE, "Alice", 100000, DAY, DAY.plusDays(30),
                 DebtStatus.OPEN, null, NOW);
-        Debt settled = new Debt(2, DebtDirection.RECEIVABLE, "Bob", 50000, null,
+        Debt settled = new Debt(2, DebtDirection.RECEIVABLE, "Bob", 50000, null, null,
                 DebtStatus.SETTLED, DAY, NOW);
         assertEquals(open, DebtMapper.toModel(DebtMapper.toDto(open)));
         assertEquals(settled, DebtMapper.toModel(DebtMapper.toDto(settled)));

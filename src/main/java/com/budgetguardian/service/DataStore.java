@@ -10,6 +10,7 @@ import com.budgetguardian.model.Account;
 import com.budgetguardian.model.Bill;
 import com.budgetguardian.model.Category;
 import com.budgetguardian.model.Debt;
+import com.budgetguardian.model.DebtDirection;
 import com.budgetguardian.model.DebtPayment;
 import com.budgetguardian.model.RefillItem;
 import com.budgetguardian.model.Transaction;
@@ -70,6 +71,7 @@ public final class DataStore {
     private final HashMap<String, Long> otherDailyTotals = new HashMap<>();
     private final HashMap<String, Long> categoryMonthTotals = new HashMap<>();
     private final HashMap<String, Long> dangerWeekTotals = new HashMap<>();
+    private final HashMap<String, Long> dailyOffsets = new HashMap<>();
 
     private final CircularBuffer<Transaction> recentTransactions = new CircularBuffer<>(20);
     private final Stack<Action> undoStack = new Stack<>();
@@ -144,9 +146,29 @@ public final class DataStore {
 
     // ---- derived-total reads (all O(1)) --------------------------------------
 
-    /** @return total DailySpending-category expenses on {@code date} in satang. */
+    /**
+     * @return DailySpending-category spending on {@code date}, net of any
+     *         receivable-debt repayments whose debt was incurred that day
+     *         (money you fronted and got paid back no longer counts as usage).
+     *         Clamped at zero. In satang.
+     */
     public long dailyTotal(LocalDate date) {
+        long raw = dailyTotals.getOrDefault(dayKey(date), 0L);
+        long offset = dailyOffsets.getOrDefault(dayKey(date), 0L);
+        return Math.max(0, raw - offset);
+    }
+
+    /** @return the gross DailySpending total on {@code date}, ignoring debt offsets. */
+    public long dailyGrossTotal(LocalDate date) {
         return dailyTotals.getOrDefault(dayKey(date), 0L);
+    }
+
+    /**
+     * Adds ({@code +}) or removes ({@code -}) a receivable-repayment offset
+     * against {@code date}'s spending total. Keys prune at zero. O(1).
+     */
+    public void applyDailyOffset(LocalDate date, long delta) {
+        addTo(dailyOffsets, dayKey(date), delta);
     }
 
     /** @return total expenses on {@code date} outside the DailySpending category, in satang. */
@@ -242,6 +264,28 @@ public final class DataStore {
         Iterator<Transaction> it = ledger.iterator();
         while (it.hasNext()) {
             applyToTotals(it.next(), +1);
+        }
+    }
+
+    /**
+     * Recomputes the receivable-repayment day offsets from every recorded debt
+     * payment: each payment on a RECEIVABLE debt with an occurred date reduces
+     * that day's spending. O(total payments). Call after debts and their
+     * payments are loaded.
+     */
+    public void rebuildOffsets() {
+        dailyOffsets.clear();
+        Iterator<HashMap.Entry<Long, DoublyLinkedList<DebtPayment>>> it = debtPayments.iterator();
+        while (it.hasNext()) {
+            HashMap.Entry<Long, DoublyLinkedList<DebtPayment>> entry = it.next();
+            Debt debt = debts.get(entry.key());
+            if (debt == null || debt.direction() != DebtDirection.RECEIVABLE || debt.occurredDate() == null) {
+                continue;
+            }
+            Iterator<DebtPayment> payments = entry.value().iterator();
+            while (payments.hasNext()) {
+                applyDailyOffset(debt.occurredDate(), payments.next().amountSatang());
+            }
         }
     }
 

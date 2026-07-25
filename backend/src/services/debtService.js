@@ -23,6 +23,7 @@ export async function createDebt(dto) {
       direction: dto.direction,
       person: dto.person,
       amountSatang: BigInt(dto.amountSatang),
+      occurredDate: dto.occurredDate ? parseDateOnly(dto.occurredDate) : null,
       dueDate: dto.dueDate ? parseDateOnly(dto.dueDate) : null,
       status: dto.status,
       settledDate: dto.settledDate ? parseDateOnly(dto.settledDate) : null,

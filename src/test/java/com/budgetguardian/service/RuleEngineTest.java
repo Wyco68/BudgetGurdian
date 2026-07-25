@@ -59,7 +59,7 @@ class RuleEngineTest extends ServiceTestBase {
     void overdueDebtRaises90() {
         engineToday(DAY.plusDays(40));
         debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice", 10_000,
-                DAY.plusDays(30), DebtStatus.OPEN, null, NOW));               // due before today
+                DAY, DAY.plusDays(30), DebtStatus.OPEN, null, NOW));               // due before today
         assertEquals(NotificationType.DEBT_OVERDUE, notifications.heroBanner().type());
     }
 
@@ -67,7 +67,7 @@ class RuleEngineTest extends ServiceTestBase {
     void settledDebtDoesNotAlert() {
         engineToday(DAY.plusDays(40));
         Debt debt = debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice", 10_000,
-                DAY.plusDays(30), DebtStatus.OPEN, null, NOW));
+                DAY, DAY.plusDays(30), DebtStatus.OPEN, null, NOW));
         debtService.pay(debt.id(), "SCB", 10_000, DAY.plusDays(35));          // settles it
         assertNull(notifications.heroBanner());
     }

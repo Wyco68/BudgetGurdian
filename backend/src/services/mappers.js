@@ -53,6 +53,7 @@ export function toDebtDto(row) {
     direction: row.direction,
     person: row.person,
     amountSatang: Number(row.amountSatang),
+    occurredDate: row.occurredDate ? formatDateOnly(row.occurredDate) : null,
     dueDate: row.dueDate ? formatDateOnly(row.dueDate) : null,
     status: row.status,
     settledDate: row.settledDate ? formatDateOnly(row.settledDate) : null,

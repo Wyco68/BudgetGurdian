@@ -114,6 +114,7 @@ model Debt {
   direction    DebtDirection
   person       String
   amountSatang BigInt        @map("amount_satang")
+  occurredDate DateTime?     @map("occurred_date") @db.Date
   dueDate      DateTime?     @map("due_date") @db.Date
   status       DebtStatus    @default(OPEN)
   settledDate  DateTime?     @map("settled_date") @db.Date

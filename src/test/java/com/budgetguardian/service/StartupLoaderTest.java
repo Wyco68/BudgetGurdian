@@ -32,7 +32,7 @@ class StartupLoaderTest extends ServiceTestBase {
         transactionService.add(expense("SCB", ALCOHOL, null, 9_000, DAY));
         transferService.add(new Transfer(0, "SCB", "SAVING", 5_000, "move", DAY, NOW));
         Debt debt = debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice", 50_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         debtService.pay(debt.id(), "SAVING", 20_000, DAY);
 
         DataStore reloaded = reload();

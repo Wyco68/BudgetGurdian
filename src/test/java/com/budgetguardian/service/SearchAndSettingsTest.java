@@ -54,9 +54,9 @@ class SearchAndSettingsTest extends ServiceTestBase {
     @Test
     void debtSearchByPerson() {
         debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice Smith", 1_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         debtService.add(new Debt(0, DebtDirection.RECEIVABLE, "Bob", 2_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         assertEquals(1, searchService.searchDebts("alice").size());
         assertTrue(searchService.searchDebts("charlie").isEmpty());
     }

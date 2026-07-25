@@ -51,6 +51,7 @@ export const debtSchema = z.object({
   direction: z.enum(['PAYABLE', 'RECEIVABLE']),
   person: z.string().min(1).max(200),
   amountSatang: satang,
+  occurredDate: dateOnly.nullish(),
   dueDate: dateOnly.nullish(),
   status: z.enum(['OPEN', 'SETTLED']),
   settledDate: dateOnly.nullish(),

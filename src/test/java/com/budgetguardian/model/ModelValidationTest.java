@@ -54,10 +54,10 @@ class ModelValidationTest {
     @Test
     void debtSettledStateConsistency() {
         assertThrows(IllegalArgumentException.class, () -> new Debt(
-                0, DebtDirection.PAYABLE, "Alice", 100, null, DebtStatus.SETTLED, null, NOW));
+                0, DebtDirection.PAYABLE, "Alice", 100, null, null, DebtStatus.SETTLED, null, NOW));
         assertThrows(IllegalArgumentException.class, () -> new Debt(
-                0, DebtDirection.PAYABLE, "Alice", 100, null, DebtStatus.OPEN, DAY, NOW));
-        Debt open = new Debt(0, DebtDirection.PAYABLE, "Alice", 100, DAY, DebtStatus.OPEN, null, NOW);
+                0, DebtDirection.PAYABLE, "Alice", 100, null, null, DebtStatus.OPEN, DAY, NOW));
+        Debt open = new Debt(0, DebtDirection.PAYABLE, "Alice", 100, DAY, DAY, DebtStatus.OPEN, null, NOW);
         Debt settled = open.settled(DAY.plusDays(1));
         assertEquals(DebtStatus.SETTLED, settled.status());
         assertEquals(DebtStatus.OPEN, settled.reopened().status());
@@ -65,11 +65,11 @@ class ModelValidationTest {
 
     @Test
     void debtOverdueOnlyWhenOpenAndPastDue() {
-        Debt due = new Debt(1, DebtDirection.PAYABLE, "A", 100, DAY, DebtStatus.OPEN, null, NOW);
+        Debt due = new Debt(1, DebtDirection.PAYABLE, "A", 100, DAY, DAY, DebtStatus.OPEN, null, NOW);
         assertTrue(due.isOverdue(DAY.plusDays(1)));
         assertFalse(due.isOverdue(DAY));                       // due today ≠ overdue
         assertFalse(due.settled(DAY).isOverdue(DAY.plusDays(9)));
-        Debt noDue = new Debt(2, DebtDirection.PAYABLE, "A", 100, null, DebtStatus.OPEN, null, NOW);
+        Debt noDue = new Debt(2, DebtDirection.PAYABLE, "A", 100, null, null, DebtStatus.OPEN, null, NOW);
         assertFalse(noDue.isOverdue(DAY.plusYears(1)));
     }
 

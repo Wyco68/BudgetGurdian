@@ -80,12 +80,12 @@ class ReportServiceTest extends ServiceTestBase {
     @Test
     void debtReportSumsOutstandingByDirection() {
         Debt payable = debtService.add(new Debt(0, DebtDirection.PAYABLE, "Alice", 100_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         debtService.pay(payable.id(), "SCB", 30_000, DAY);            // 70000 remaining
         debtService.add(new Debt(0, DebtDirection.RECEIVABLE, "Bob", 50_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         Debt settled = debtService.add(new Debt(0, DebtDirection.PAYABLE, "Carol", 10_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         debtService.pay(settled.id(), "SCB", 10_000, DAY);           // settles
 
         DebtReport report = reports().debtReport();

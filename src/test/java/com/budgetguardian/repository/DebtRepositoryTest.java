@@ -25,7 +25,7 @@ class DebtRepositoryTest extends RepositoryTestBase {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 6, 12, 0);
 
     private Debt openDebt(LocalDate dueDate) {
-        return new Debt(0, DebtDirection.PAYABLE, "Alice", 100_000, dueDate, DebtStatus.OPEN, null, NOW);
+        return new Debt(0, DebtDirection.PAYABLE, "Alice", 100_000, dueDate, dueDate, DebtStatus.OPEN, null, NOW);
     }
 
     @Test

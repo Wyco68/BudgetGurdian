@@ -70,7 +70,7 @@ class FullStackIntegrationTest {
         ctx.transfers().add(new Transfer(0, "SAVING", "SCB", 200_000, "top up", MON, NOW));
         // Debt: owe Alice 100000, pay 40000.
         Debt debt = ctx.debts().add(new Debt(0, DebtDirection.PAYABLE, "Alice", 100_000,
-                MON.plusDays(30), DebtStatus.OPEN, null, NOW));
+                MON, MON.plusDays(30), DebtStatus.OPEN, null, NOW));
         ctx.debts().pay(debt.id(), "SCB", 40_000, MON);
 
         // Danger banner should be the top alert (priority 100).
@@ -108,7 +108,7 @@ class FullStackIntegrationTest {
         ctx.transactions().add(expense("SCB", 1, null, 5_000, MON));
         ctx.transfers().add(new Transfer(0, "SCB", "SAVING", 1_000, "m", MON, NOW));
         Debt debt = ctx.debts().add(new Debt(0, DebtDirection.RECEIVABLE, "Bob", 10_000,
-                null, DebtStatus.OPEN, null, NOW));
+                null, null, DebtStatus.OPEN, null, NOW));
         ctx.debts().pay(debt.id(), "SCB", 10_000, MON);
 
         while (ctx.undo().canUndo()) {
