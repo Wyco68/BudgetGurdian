@@ -1,9 +1,6 @@
 package com.budgetguardian.view;
 
-import com.budgetguardian.datastructures.Iterator;
 import com.budgetguardian.model.Account;
-import com.budgetguardian.model.Transaction;
-import com.budgetguardian.model.TransactionType;
 import com.budgetguardian.service.DataStore;
 import com.budgetguardian.service.EventType;
 import com.budgetguardian.service.ServiceContext;
@@ -41,6 +38,10 @@ import java.util.function.Supplier;
  */
 public final class DashboardView implements View {
 
+    /** Pseudo-account ids for the debt summary cards, selectable into the combined total. */
+    private static final String RECEIVABLE_ID = "__RECEIVABLE__";
+    private static final String PAYABLE_ID = "__PAYABLE__";
+
     private final ServiceContext services;
     private final DataStore store;
     private final Supplier<LocalDate> today;
@@ -58,6 +59,7 @@ public final class DashboardView implements View {
         scroller.getStyleClass().addAll("view-root", "edge-to-edge");
         services.bus().subscribe(EventType.TRANSACTIONS_CHANGED, t -> refresh());
         services.bus().subscribe(EventType.BALANCES_CHANGED, t -> refresh());
+        services.bus().subscribe(EventType.DEBTS_CHANGED, t -> refresh());
         refresh();
     }
 
@@ -91,9 +93,7 @@ public final class DashboardView implements View {
                 sectionLabel("This Month"),
                 monthlyStatsRow(),
                 sectionLabel("Category Totals — " + YearMonth.from(today.get())),
-                categoryTotals(),
-                sectionLabel("Recent Transactions"),
-                recentTransactions());
+                categoryTotals());
     }
 
     private Node pageHeader() {
@@ -133,7 +133,31 @@ public final class DashboardView implements View {
     private Node balancesRow() {
         FlowPane row = new FlowPane(12, 12);
         DashboardOrder.forEachAccount(store, account -> row.getChildren().add(balanceCard(account)));
+        var debt = services.reports().debtReport();
+        row.getChildren().add(debtCard("Receivable", RECEIVABLE_ID, debt.outstandingReceivableSatang()));
+        row.getChildren().add(debtCard("Payable", PAYABLE_ID, debt.outstandingPayableSatang()));
         return row;
+    }
+
+    /** A selectable outstanding-debt summary card, behaving like an account tile. */
+    private Node debtCard(String label, String pseudoId, long amountSatang) {
+        Label name = new Label(label);
+        name.getStyleClass().add("card-heading");
+        Label value = new Label(Money.format(amountSatang));
+        value.getStyleClass().add("stat-med");
+        VBox card = new VBox(6, name, value);
+        card.getStyleClass().addAll("card", "card-account", "selectable");
+        if (selectedAccountIds.contains(pseudoId)) {
+            card.getStyleClass().add("card-account-selected");
+        }
+        card.setPrefWidth(180);
+        card.setOnMouseClicked(e -> {
+            if (!selectedAccountIds.remove(pseudoId)) {
+                selectedAccountIds.add(pseudoId);
+            }
+            refresh();
+        });
+        return card;
     }
 
     private Node balanceCard(Account account) {
@@ -156,20 +180,33 @@ public final class DashboardView implements View {
         return card;
     }
 
-    /** Combined balance of every clicked account, with a clear-selection hint. */
+    /** Combined balance of every clicked account/debt card, with a clear-selection hint. */
     private Node selectedTotalCard() {
         long total = 0;
         StringBuilder names = new StringBuilder();
+        var debt = services.reports().debtReport();
         for (String id : selectedAccountIds) {
-            Account account = store.accounts().get(id);
-            if (account == null) {
-                continue;
+            long value;
+            String label;
+            if (RECEIVABLE_ID.equals(id)) {
+                value = debt.outstandingReceivableSatang();
+                label = "Receivable";
+            } else if (PAYABLE_ID.equals(id)) {
+                value = debt.outstandingPayableSatang();
+                label = "Payable";
+            } else {
+                Account account = store.accounts().get(id);
+                if (account == null) {
+                    continue;
+                }
+                value = account.balanceSatang();
+                label = account.name();
             }
-            total += account.balanceSatang();
+            total += value;
             if (names.length() > 0) {
                 names.append(" + ");
             }
-            names.append(account.name());
+            names.append(label);
         }
         Label heading = new Label("Selected Total (" + selectedAccountIds.size() + ")");
         heading.getStyleClass().add("card-heading");
@@ -194,13 +231,18 @@ public final class DashboardView implements View {
         YearMonth month = YearMonth.from(day);
         long total = 0;
         long highest = 0;
+        LocalDate highestDay = null;
         int daysWithSpend = 0;
         for (int d = 1; d <= month.lengthOfMonth(); d++) {
-            long dayTotal = store.dailyTotal(month.atDay(d));
+            LocalDate date = month.atDay(d);
+            long dayTotal = store.dailyTotal(date);
             if (dayTotal > 0) {
                 total += dayTotal;
                 daysWithSpend++;
-                highest = Math.max(highest, dayTotal);
+                if (dayTotal > highest) {
+                    highest = dayTotal;
+                    highestDay = date;
+                }
             }
         }
         long average = daysWithSpend > 0 ? total / daysWithSpend : 0;
@@ -209,7 +251,9 @@ public final class DashboardView implements View {
         row.getChildren().addAll(
                 statCard("Monthly Spending", Money.format(total)),
                 statCard("Average / Active Day", Money.format(average)),
-                statCard("Highest Day", Money.format(highest)));
+                statCard("Highest Day",
+                        highestDay == null ? Money.format(0)
+                                : Money.format(highest) + "  ·  " + highestDay.format(UiFormat.DATE)));
         return row;
     }
 
@@ -256,37 +300,6 @@ public final class DashboardView implements View {
             list.getChildren().add(mutedLabel("No spending yet this month."));
         }
         return list;
-    }
-
-    private Node recentTransactions() {
-        VBox list = new VBox(4);
-        list.getStyleClass().add("card");
-        Iterator<Transaction> it = store.recentTransactions().newestFirst();
-        if (!it.hasNext()) {
-            list.getChildren().add(mutedLabel("No transactions recorded yet."));
-            return list;
-        }
-        // Shown inline (the whole dashboard scrolls), so every recent row is
-        // fully visible instead of squeezed into a small nested scroll box.
-        while (it.hasNext()) {
-            list.getChildren().add(recentRow(it.next()));
-        }
-        return list;
-    }
-
-    private Node recentRow(Transaction txn) {
-        String sign = txn.type() == TransactionType.INCOME ? "+" : "−";
-        Label left = new Label(txn.date().format(UiFormat.DATE) + "  ·  "
-                + UiFormat.categoryName(store, txn.categoryId())
-                + (txn.itemName() != null ? " · " + txn.itemName() : ""));
-        Label right = new Label(sign + Money.formatPlain(txn.amountSatang()));
-        right.getStyleClass().add(txn.type() == TransactionType.INCOME ? "amount-pos" : "amount-neg");
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox row = new HBox(8, left, spacer, right);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.getStyleClass().add("list-row");
-        return row;
     }
 
     private Label sectionLabel(String text) {
