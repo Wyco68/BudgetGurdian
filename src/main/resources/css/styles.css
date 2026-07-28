@@ -501,6 +501,90 @@
 }
 .calc-button:hover { -fx-background-color: -bg-3; -fx-border-color: -accent; }
 
+/* ---- in-field calculator (black pad, physical-feeling keys) -------------- */
+
+.calc-pad {
+    -fx-background-color: #000000;
+    -fx-background-radius: 14;
+    -fx-border-color: #1f2733;
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+}
+
+.calc-display {
+    -fx-background-color: #000000;
+    -fx-padding: 6 4 10 4;
+}
+
+.calc-display-input {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text;
+    -fx-prompt-text-fill: #4b5563;
+    -fx-font-family: "Consolas", "Menlo", monospace;
+    -fx-font-size: 18px;
+    -fx-alignment: center-right;
+    -fx-padding: 0;
+}
+.calc-display-input:focused { -fx-background-color: transparent; -fx-border-color: transparent; }
+
+.calc-display-result {
+    -fx-text-fill: -accent;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-max-width: infinity;
+    -fx-alignment: center-right;
+}
+
+.calc-error {
+    -fx-text-fill: -neg;
+    -fx-font-size: 11px;
+    -fx-max-width: infinity;
+    -fx-alignment: center-right;
+}
+
+.calc-keys { -fx-background-color: transparent; }
+
+.calc-key {
+    -fx-background-color: #1a1a1a;
+    -fx-text-fill: -text;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-min-height: 44;
+    -fx-background-radius: 10;
+    -fx-border-color: #2b2b2b;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+.calc-key:hover { -fx-background-color: #262626; }
+.calc-key:pressed { -fx-background-color: #0d0d0d; -fx-border-color: -accent; }
+
+.calc-key-op { -fx-background-color: #23262b; -fx-text-fill: -accent; }
+.calc-key-op:hover { -fx-background-color: #2f333a; }
+
+.calc-key-clear { -fx-text-fill: -neg; }
+
+.calc-key-equals {
+    -fx-background-color: linear-gradient(to bottom, -accent, -accent-dim);
+    -fx-text-fill: -accent-ink;
+    -fx-border-color: transparent;
+}
+.calc-key-equals:hover { -fx-background-color: linear-gradient(to bottom, #5ee7d6, -accent); }
+
+.calc-use {
+    -fx-background-color: #1a1a1a;
+    -fx-text-fill: -accent;
+    -fx-font-weight: bold;
+    -fx-min-height: 38;
+    -fx-background-radius: 10;
+    -fx-border-color: -accent-deep;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+.calc-use:hover { -fx-background-color: #262626; -fx-border-color: -accent; }
+
 /* ---- scrollbars --------------------------------------------------------- */
 
 .scroll-bar {
