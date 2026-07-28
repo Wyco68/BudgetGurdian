@@ -31,6 +31,16 @@ public final class TransactionService {
     /** Name of the category whose expenses drive refill-item tracking. */
     public static final String REFILL_CATEGORY_NAME = "Refill";
 
+    /** Name of the category whose expenses are gambling losses. */
+    public static final String GAMBLE_CATEGORY_NAME = "Gamble";
+
+    /**
+     * Reason text that marks an income row as a gambling win. Matched
+     * case-insensitively as a substring, so pre-existing rows reading
+     * "gambling win" — and longer notes containing it — are both tracked.
+     */
+    public static final String GAMBLING_WIN_REASON = "gambling win";
+
     private final DataStore store;
     private final EventBus bus;
     private final TransactionRunner runner;

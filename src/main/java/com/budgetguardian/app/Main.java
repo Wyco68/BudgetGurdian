@@ -14,6 +14,7 @@ import com.budgetguardian.view.CalendarView;
 import com.budgetguardian.view.DangerView;
 import com.budgetguardian.view.DashboardView;
 import com.budgetguardian.view.DebtView;
+import com.budgetguardian.view.GamblingView;
 import com.budgetguardian.view.GraphView;
 import com.budgetguardian.view.RefillsView;
 import com.budgetguardian.view.ReportsView;
@@ -90,6 +91,7 @@ public final class Main extends Application {
         shell.register(new RefillsView(services, LocalDate::now));
         shell.register(new ReportsView(services, LocalDate::now));
         shell.register(new DangerView(services, LocalDate::now));
+        shell.register(new GamblingView(services, LocalDate::now));
         SearchView searchView = new SearchView(services);
         shell.register(searchView);
         shell.register(new GraphView(services, LocalDate::now));

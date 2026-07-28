@@ -46,6 +46,30 @@ public final class ReportService {
                              int openCount, int settledCount) {
     }
 
+    /** One gambling result: the ledger row it came from and which way it went. */
+    public record GamblingEntry(Transaction txn, boolean win) {
+
+        /** @return the day the win or loss happened. */
+        public LocalDate date() {
+            return txn.date();
+        }
+
+        /** @return the staked or won amount, always positive. */
+        public long amountSatang() {
+            return txn.amountSatang();
+        }
+    }
+
+    /** Win/loss totals and counts over a set of gambling entries. */
+    public record GamblingSummary(long wonSatang, long lostSatang, int winCount, int lossCount,
+                                  long biggestWinSatang, long biggestLossSatang) {
+
+        /** @return wins minus losses; negative when gambling is down overall. */
+        public long netSatang() {
+            return wonSatang - lostSatang;
+        }
+    }
+
     private final DataStore store;
 
     public ReportService(DataStore store) {
@@ -194,6 +218,65 @@ public final class ReportService {
             }
         }
         return new DebtReport(payable, receivable, open, settled);
+    }
+
+    /**
+     * @return every gambling result in the ledger, newest first. Wins are
+     *         income rows whose reason contains
+     *         {@link TransactionService#GAMBLING_WIN_REASON}; losses are
+     *         expenses in the {@code Gamble} category. O(n) ledger scan.
+     */
+    public DynamicArray<GamblingEntry> gamblingLog() {
+        DynamicArray<GamblingEntry> rows = new DynamicArray<>();
+        Iterator<Transaction> it = store.ledger().descendingIterator();
+        while (it.hasNext()) {
+            Transaction txn = it.next();
+            if (isGamblingWin(txn)) {
+                rows.append(new GamblingEntry(txn, true));
+            } else if (isGamblingLoss(txn)) {
+                rows.append(new GamblingEntry(txn, false));
+            }
+        }
+        return rows;
+    }
+
+    /** @return totals over {@code entries} (typically {@link #gamblingLog()}). */
+    public GamblingSummary gamblingSummary(DynamicArray<GamblingEntry> entries) {
+        long won = 0;
+        long lost = 0;
+        int wins = 0;
+        int losses = 0;
+        long biggestWin = 0;
+        long biggestLoss = 0;
+        for (int i = 0; i < entries.size(); i++) {
+            GamblingEntry entry = entries.get(i);
+            long amount = entry.amountSatang();
+            if (entry.win()) {
+                won += amount;
+                wins++;
+                biggestWin = Math.max(biggestWin, amount);
+            } else {
+                lost += amount;
+                losses++;
+                biggestLoss = Math.max(biggestLoss, amount);
+            }
+        }
+        return new GamblingSummary(won, lost, wins, losses, biggestWin, biggestLoss);
+    }
+
+    private boolean isGamblingWin(Transaction txn) {
+        return txn.type() == TransactionType.INCOME
+                && txn.reason() != null
+                && txn.reason().toLowerCase(java.util.Locale.ROOT)
+                        .contains(TransactionService.GAMBLING_WIN_REASON);
+    }
+
+    private boolean isGamblingLoss(Transaction txn) {
+        if (txn.type() != TransactionType.EXPENSE || txn.categoryId() == null) {
+            return false;
+        }
+        Category category = store.categories().get(txn.categoryId());
+        return category != null && category.name().equals(TransactionService.GAMBLE_CATEGORY_NAME);
     }
 
     /** @return refillable items overdue on {@code today}. */
