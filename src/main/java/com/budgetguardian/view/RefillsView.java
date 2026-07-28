@@ -21,9 +21,9 @@ import java.util.function.Supplier;
 
 /**
  * Refillable-items screen: every tracked item with its running-average
- * interval, last purchase, how long the current stock has lasted so far, and
- * the next-expected date. Overdue items are flagged. Read-only projection of
- * the refill {@code HashMap}.
+ * interval, last purchase and how long the current stock has lasted so far.
+ * The next-expected (due) date is deliberately not shown — only the derived
+ * overdue flag. Read-only projection of the refill {@code HashMap}.
  */
 public final class RefillsView implements View {
 
@@ -86,8 +86,6 @@ public final class RefillsView implements View {
             long days = c.getValue().daysLasted(today.get());
             return ro(days + (days == 1 ? " day" : " days"));
         });
-        TableColumn<RefillItem, String> next = new TableColumn<>("Next Expected");
-        next.setCellValueFactory(c -> ro(c.getValue().nextExpected().format(UiFormat.DATE)));
         TableColumn<RefillItem, String> status = new TableColumn<>("Status");
         status.setCellValueFactory(c -> ro(c.getValue().isOverdue(today.get()) ? "⚠ Overdue" : "OK"));
 
@@ -96,7 +94,6 @@ public final class RefillsView implements View {
         table.getColumns().add(count);
         table.getColumns().add(last);
         table.getColumns().add(lasted);
-        table.getColumns().add(next);
         table.getColumns().add(status);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
         table.getStyleClass().add("data-table");
