@@ -22,7 +22,7 @@
       "jpackage (native installer)",
       "Maven Shade (fat jar)"
     ],
-    "backend": "Node.js + Express 5 + Prisma ORM -> Supabase PostgreSQL (backend/)",
+    "backend": "Node.js + Express 5 + Prisma ORM -> Neon PostgreSQL (backend/)",
     "httpClient": "java.net.http.HttpClient + Gson (api mode)"
   },
   "coreConstraint": {
@@ -36,7 +36,7 @@
   },
   "architecture": {
     "layering": [
-      "Storage (persistence only, never queried at runtime after startup): SQLite file OR REST backend -> Prisma -> Supabase PostgreSQL",
+      "Storage (persistence only, never queried at runtime after startup): SQLite file OR REST backend -> Prisma -> Neon PostgreSQL",
       "Repository interfaces (repository/) with two implementations: repository/sqlite (JDBC) and repository/api (HTTP+JSON)",
       "Custom Data Structures (owned by DataStore)",
       "Service layer (business logic, validation, undo, rules, notifications, reports)",
@@ -58,7 +58,7 @@
       "api": "REST backend selected by api.baseUrl; optional X-API-Key; timeouts and idempotent-only retries configurable"
     },
     "cloudPersistence": {
-      "chain": "Java Desktop -> Repository layer -> HTTP REST API -> Node.js (Express) -> Prisma -> Supabase PostgreSQL",
+      "chain": "Java Desktop -> Repository layer -> HTTP REST API -> Node.js (Express) -> Prisma -> Neon PostgreSQL",
       "backendFolder": "backend/",
       "docs": [
         "docs/ARCHITECTURE.md",

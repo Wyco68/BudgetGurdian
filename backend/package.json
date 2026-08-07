@@ -1,7 +1,7 @@
 {
   "name": "budget-guardian-backend",
   "version": "1.0.0",
-  "description": "REST persistence backend for the Budget Guardian desktop app (Express + Prisma + Supabase PostgreSQL)",
+  "description": "REST persistence backend for the Budget Guardian desktop app (Express + Prisma + Neon PostgreSQL)",
   "type": "module",
   "main": "src/server.js",
   "engines": {

@@ -1,7 +1,7 @@
 # Budget Guardian — Cloud Persistence Architecture
 
 This document describes how the desktop application persists data through a
-REST backend into Supabase PostgreSQL, why it is built that way, and the
+REST backend into Neon PostgreSQL, why it is built that way, and the
 decisions (ADRs) behind it.
 
 The one rule everything else follows: **the custom data structures remain the
@@ -34,7 +34,7 @@ was replaced by a SQL query.
                                      Prisma ORM
                                            │
                                            ▼
-                              Supabase PostgreSQL (pooled)
+                                Neon PostgreSQL (direct)
 ```
 
 - The UI never touches HTTP or SQL. It reads `DataStore` and calls services.
@@ -80,7 +80,7 @@ sequenceDiagram
     participant SL as StartupLoader
     participant Repo as Api*Repository
     participant BE as Backend (Express)
-    participant DB as Supabase PostgreSQL
+    participant DB as Neon PostgreSQL
 
     Main->>Main: AppConfig.load()  (storage.mode=api)
     Main->>SC: new ServiceContext(ApiRepositories, today)
@@ -188,9 +188,9 @@ Nothing in the service layer changes when that lands — the seam is the
 **Decision:** the desktop talks only to a Node/Express backend; Prisma talks
 to PostgreSQL. **Why:** credentials never leave the server (`.env`), input is
 validated twice (client-side sanity, zod server-side), the database can move
-(Supabase → RDS → anything Prisma supports) without shipping a new desktop
+(Neon → RDS → anything Prisma supports) without shipping a new desktop
 build, and server-side atomic endpoints give a place to hang auth, auditing
-and the future sync queue. **Rejected:** direct JDBC-to-Supabase — leaks
+and the future sync queue. **Rejected:** direct JDBC-to-Postgres — leaks
 credentials into a distributable binary and couples every client to the
 schema.
 
@@ -223,6 +223,6 @@ drift.
 ### ADR-5 — Optional shared-secret auth now, real auth later
 A single `X-API-Key` (timing-safe compare, enabled by setting `API_KEY` in
 `.env`) fits a personal single-user deployment. The middleware seam
-(`backend/src/middleware/apiKeyAuth.js`) is where JWT/Supabase Auth would
+(`backend/src/middleware/apiKeyAuth.js`) is where JWT/OIDC auth would
 slot in if the app ever grows users; `users`-table scoping was deliberately
 not built speculatively.

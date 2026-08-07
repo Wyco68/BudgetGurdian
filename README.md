@@ -68,7 +68,7 @@ real application.
 | Build | Maven |
 | GUI | JavaFX 21 (dark, Material-inspired theme, no FXML — code-built views) |
 | Persistence | Pluggable: SQLite via JDBC (`sqlite-jdbc`, local mode) **or** REST backend (api mode) |
-| Backend (api mode) | Node.js + Express 5 + Prisma → Supabase PostgreSQL (`backend/`) |
+| Backend (api mode) | Node.js + Express 5 + Prisma → Neon PostgreSQL (`backend/`) |
 | HTTP / JSON (api mode) | `java.net.http.HttpClient` + Gson |
 | Testing | JUnit 5 |
 | Documentation | Javadoc on every public type and method |
@@ -82,7 +82,7 @@ Strict one-directional layering. The UI never touches storage, and storage is
 never queried at runtime after startup — it exists purely for persistence.
 
 ```
-Storage (persistence only): SQLite file  ─or─  REST backend → Prisma → Supabase PostgreSQL
+Storage (persistence only): SQLite file  ─or─  REST backend → Prisma → Neon PostgreSQL
         │  hydrated once at startup (StartupLoader)
         ▼
 Repository interfaces        (repository/sqlite = JDBC, repository/api = HTTP+JSON;
@@ -124,7 +124,7 @@ repository implementation changes. The desktop never connects to PostgreSQL
 and never holds database credentials.
 
 ```
-Java Desktop → Repository layer → HTTP REST API → Node.js (Express) → Prisma → Supabase PostgreSQL
+Java Desktop → Repository layer → HTTP REST API → Node.js (Express) → Prisma → Neon PostgreSQL
 ```
 
 - Switch modes in `config.properties` (`storage.mode=local|api`) — see
@@ -285,7 +285,7 @@ annotated `config.properties` is created next to it.
 ### Run against the cloud (api mode)
 
 ```bash
-# 1. one-time backend setup — see docs/DEPLOYMENT.md for Supabase details
+# 1. one-time backend setup — see docs/DEPLOYMENT.md for Neon details
 cd backend && npm install && cp .env.example .env   # fill in the database URLs
 npm run db:migrate && npm run db:seed && npm run dev
 
@@ -389,7 +389,7 @@ Installers are written to `target/installer/`.
   REST call) before touching in-memory state, so a crash or a failed remote
   save never desyncs memory from what was actually stored.
 - **The desktop never sees the database.** In api mode all persistence goes
-  through the Node backend; Supabase credentials exist only in
+  through the Node backend; Neon credentials exist only in
   `backend/.env`. Numeric ids were kept over UUIDs to leave the domain
   records untouched — see ADR-2 in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

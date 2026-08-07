@@ -1,4 +1,4 @@
-// Budget Guardian — persistence schema (Supabase PostgreSQL).
+// Budget Guardian — persistence schema (Neon PostgreSQL).
 //
 // Mirrors the desktop application's domain one-to-one so DTOs map cleanly
 // onto the existing Java records. Design notes:

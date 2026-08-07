@@ -1,7 +1,7 @@
 # Budget Guardian — Backend
 
 REST persistence tier for the Budget Guardian desktop app:
-**Express 5 → zod validation → Prisma → Supabase PostgreSQL**.
+**Express 5 → zod validation → Prisma → Neon PostgreSQL**.
 
 The desktop application is the only intended client. It downloads all data
 at startup, keeps working entirely in its own in-memory data structures, and
@@ -38,4 +38,4 @@ src/utils/                dates (naive-UTC contract), ApiError, param parsing
 
 - Endpoint reference: [../docs/API.md](../docs/API.md)
 - Architecture & ADRs: [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)
-- Supabase setup & hosting: [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)
+- Neon setup & hosting: [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)
